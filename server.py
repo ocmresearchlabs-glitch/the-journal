@@ -1,8 +1,11 @@
 # The Journal - Deployment Server
-
 # All Rights Reserved.
 
-import os, json, re, math, uuid
+import os
+import json
+import re
+import math
+import uuid
 from datetime import datetime
 from pathlib import Path
 from functools import wraps
@@ -11,6 +14,7 @@ from flask import Flask, jsonify, request, send_from_directory, send_file, make_
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.exceptions import HTTPException
 from sqlalchemy import or_
 
 app = Flask(__name__, static_folder='static')
@@ -18,11 +22,22 @@ BASE = Path(__file__).parent
 INSTANCE = BASE / 'instance'
 INSTANCE.mkdir(exist_ok=True)
 
+db_url = os.getenv('DATABASE_URL')
+if db_url and db_url.startswith('postgres://'):
+    db_url = db_url.replace('postgres://', 'postgresql://', 1)
+if not db_url:
+    db_url = 'sqlite:///' + str(INSTANCE / 'journal.db')
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-change-before-deploy')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///' + str(INSTANCE / 'journal.db'))
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
+
+if db_url.startswith('sqlite'):
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'connect_args': {'check_same_thread': False}
+    }
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -48,6 +63,15 @@ def add_cors(response):
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return e
+    app.logger.exception('Unhandled server error')
+    db.session.rollback()
+    return jsonify({'error': 'Internal server error', 'detail': str(e)}), 500
 
 
 user_follows = db.Table(
@@ -81,6 +105,19 @@ class User(UserMixin, db.Model):
         return (p[0][0] + p[-1][0]).upper() if len(p) >= 2 else self.display_name[:2].upper()
 
     def to_dict(self):
+        try:
+            paper_count = Submission.query.filter_by(author_id=self.id).count()
+        except Exception:
+            paper_count = 0
+        try:
+            review_count = Review.query.filter_by(reviewer_id=self.id).count()
+        except Exception:
+            review_count = 0
+        try:
+            follower_count = self.followers.count() if hasattr(self, 'followers') else 0
+        except Exception:
+            follower_count = 0
+
         return {
             'id': self.id,
             'display_name': self.display_name,
@@ -88,9 +125,9 @@ class User(UserMixin, db.Model):
             'bio': self.bio,
             'avatar_color': self.avatar_color,
             'reputation_score': round(self.reputation, 2),
-            'paper_count': Submission.query.filter_by(author_id=self.id).count(),
-            'review_count': Review.query.filter_by(reviewer_id=self.id).count(),
-            'follower_count': self.followers.count() if hasattr(self, 'followers') else 0,
+            'paper_count': paper_count,
+            'review_count': review_count,
+            'follower_count': follower_count,
             'joined': self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -286,50 +323,63 @@ def api_login_required(f):
 
 @app.route('/')
 def index():
-    return send_file('index.html')
+    return send_file(BASE / 'index.html')
 
 
 @app.route('/manifest.json')
 def manifest():
-    return send_file('manifest.json')
+    return send_file(BASE / 'manifest.json')
 
 
 @app.route('/sw.js')
 def service_worker():
-    return send_file('sw.js')
+    return send_file(BASE / 'sw.js')
 
 
 @app.route('/static/<path:p>')
 def static_files(p):
-    return send_from_directory('static', p)
+    return send_from_directory(BASE / 'static', p)
 
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
-    d = request.get_json(silent=True) or {}
-    email = (d.get('email') or '').strip().lower()
-    name = (d.get('display_name') or '').strip()
-    pw = d.get('password', '')
-    if not email or not name or len(pw) < 6:
-        return jsonify({'error': 'All fields required, password 6+ chars'}), 400
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email taken'}), 409
-    u = User(email=email, display_name=name)
-    u.set_password(pw)
-    db.session.add(u)
-    db.session.commit()
-    login_user(u)
-    return jsonify({'user': u.to_dict()}), 201
+    try:
+        d = request.get_json(silent=True) or {}
+        email = (d.get('email') or '').strip().lower()
+        name = (d.get('display_name') or '').strip()
+        pw = d.get('password', '')
+
+        if not email or not name or len(pw) < 6:
+            return jsonify({'error': 'All fields required, password 6+ chars'}), 400
+
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': 'Email taken'}), 409
+
+        u = User(email=email, display_name=name)
+        u.set_password(pw)
+        db.session.add(u)
+        db.session.commit()
+        login_user(u)
+        return jsonify({'user': u.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception('Register failed')
+        return jsonify({'error': 'Register failed', 'detail': str(e)}), 500
 
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    d = request.get_json(silent=True) or {}
-    u = User.query.filter_by(email=(d.get('email') or '').strip().lower()).first()
-    if not u or not u.check_password(d.get('password', '')):
-        return jsonify({'error': 'Invalid credentials'}), 401
-    login_user(u)
-    return jsonify({'user': u.to_dict()})
+    try:
+        d = request.get_json(silent=True) or {}
+        u = User.query.filter_by(email=(d.get('email') or '').strip().lower()).first()
+        if not u or not u.check_password(d.get('password', '')):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        login_user(u)
+        return jsonify({'user': u.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception('Login failed')
+        return jsonify({'error': 'Login failed', 'detail': str(e)}), 500
 
 
 @app.route('/api/auth/logout', methods=['POST'])
