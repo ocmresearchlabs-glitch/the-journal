@@ -1,10 +1,8 @@
+# The Journal - Deployment Server
 
-The Journal — Deployment Server
-Single-file Flask app serving PWA front-end + JSON API.
-Deploy to Railway, Render, or Fly.io.
-All Rights Reserved.
-“””
-import os, json, re, math, hashlib, uuid
+# All Rights Reserved.
+
+import os, json, re, math, uuid
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, send_file, make_response
@@ -13,23 +11,19 @@ from flask_login import LoginManager, UserMixin, current_user, login_user, logou
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
-# ─── APP SETUP ────────────────────────────────────────────────────────────────
-
 app = Flask(**name**, static_folder=‘static’)
 BASE = Path(**file**).parent
 INSTANCE = BASE / ‘instance’
 INSTANCE.mkdir(exist_ok=True)
 
 app.config[‘SECRET_KEY’] = os.getenv(‘SECRET_KEY’, ‘dev-change-before-deploy’)
-app.config[‘SQLALCHEMY_DATABASE_URI’] = os.getenv(‘DATABASE_URL’, f”sqlite:///{INSTANCE / ‘journal.db’}”)
+app.config[‘SQLALCHEMY_DATABASE_URI’] = os.getenv(‘DATABASE_URL’, ‘sqlite:///’ + str(INSTANCE / ‘journal.db’))
 app.config[‘SQLALCHEMY_TRACK_MODIFICATIONS’] = False
 app.config[‘SESSION_COOKIE_SAMESITE’] = ‘Lax’
 app.config[‘SESSION_COOKIE_SECURE’] = True
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-
-# ─── CORS — Handle OPTIONS preflight + add headers to all responses ───────────
 
 @app.before_request
 def handle_preflight():
@@ -51,8 +45,6 @@ response.headers[‘Access-Control-Allow-Methods’] = ‘GET, POST, PUT, DELETE
 response.headers[‘Access-Control-Allow-Credentials’] = ‘true’
 return response
 
-# ─── MODELS ───────────────────────────────────────────────────────────────────
-
 user_follows = db.Table(‘user_follows’,
 db.Column(‘follower_id’, db.Integer, db.ForeignKey(‘user.id’), primary_key=True),
 db.Column(‘followed_id’, db.Integer, db.ForeignKey(‘user.id’), primary_key=True),
@@ -69,27 +61,23 @@ avatar_color = db.Column(db.String(7), default=’#5ea8ff’)
 reputation = db.Column(db.Float, default=1.0)
 is_banned = db.Column(db.Boolean, default=False)
 created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-```
 def set_password(self, pw): self.password_hash = generate_password_hash(pw)
 def check_password(self, pw): return check_password_hash(self.password_hash, pw)
 @property
 def initials(self):
-    p = self.display_name.strip().split()
-    return (p[0][0]+p[-1][0]).upper() if len(p)>=2 else self.display_name[:2].upper()
+p = self.display_name.strip().split()
+return (p[0][0]+p[-1][0]).upper() if len(p)>=2 else self.display_name[:2].upper()
 def to_dict(self):
-    return {'id':self.id,'display_name':self.display_name,'initials':self.initials,
-            'bio':self.bio,'avatar_color':self.avatar_color,'reputation_score':round(self.reputation,2),
-            'paper_count':Submission.query.filter_by(author_id=self.id).count(),
-            'review_count':Review.query.filter_by(reviewer_id=self.id).count(),
-            'follower_count':self.followers.count() if hasattr(self,'followers') else 0,
-            'joined':self.created_at.isoformat() if self.created_at else None}
-
-following = db.relationship('User', secondary=user_follows,
-    primaryjoin=(user_follows.c.follower_id == id),
-    secondaryjoin=(user_follows.c.followed_id == id),
-    backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
-```
+return {‘id’:self.id,‘display_name’:self.display_name,‘initials’:self.initials,
+‘bio’:self.bio,‘avatar_color’:self.avatar_color,‘reputation_score’:round(self.reputation,2),
+‘paper_count’:Submission.query.filter_by(author_id=self.id).count(),
+‘review_count’:Review.query.filter_by(reviewer_id=self.id).count(),
+‘follower_count’:self.followers.count() if hasattr(self,‘followers’) else 0,
+‘joined’:self.created_at.isoformat() if self.created_at else None}
+following = db.relationship(‘User’, secondary=user_follows,
+primaryjoin=(user_follows.c.follower_id == id),
+secondaryjoin=(user_follows.c.followed_id == id),
+backref=db.backref(‘followers’, lazy=‘dynamic’), lazy=‘dynamic’)
 
 @login_manager.user_loader
 def load_user(uid): return User.query.get(int(uid))
@@ -98,7 +86,7 @@ class Category(db.Model):
 id = db.Column(db.Integer, primary_key=True)
 slug = db.Column(db.String(80), unique=True)
 name = db.Column(db.String(120))
-emoji = db.Column(db.String(10), default=‘📄’)
+emoji = db.Column(db.String(10), default=‘x’)
 
 class Submission(db.Model):
 id = db.Column(db.Integer, primary_key=True)
@@ -113,36 +101,31 @@ category_id = db.Column(db.Integer, db.ForeignKey(‘category.id’))
 created_at = db.Column(db.DateTime, default=datetime.utcnow)
 updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 published_at = db.Column(db.DateTime)
-
-```
-author = db.relationship('User', backref='submissions')
-category = db.relationship('Category', backref='submissions')
-
-STATUS_LABELS = {'submitted':'Submitted','desk_passed':'Under Review','in_discovery':'In Discovery',
-    'under_review':'Under Review','published':'Published','desk_returned':'Revision Suggested',
-    'revision_requested':'Revision Requested','declined':'Declined','contested':'Contested'}
-STATUS_COLORS = {'submitted':'#6b7db3','in_discovery':'#5ea8ff','under_review':'#f0a030',
-    'published':'#4ade80','desk_returned':'#f0a030','revision_requested':'#f0a030',
-    'declined':'#ef4444','contested':'#ef4444'}
-
+author = db.relationship(‘User’, backref=‘submissions’)
+category = db.relationship(‘Category’, backref=‘submissions’)
+STATUS_LABELS = {‘submitted’:‘Submitted’,‘desk_passed’:‘Under Review’,‘in_discovery’:‘In Discovery’,
+‘under_review’:‘Under Review’,‘published’:‘Published’,‘desk_returned’:‘Revision Suggested’,
+‘revision_requested’:‘Revision Requested’,‘declined’:‘Declined’,‘contested’:‘Contested’}
+STATUS_COLORS = {‘submitted’:’#6b7db3’,‘in_discovery’:’#5ea8ff’,‘under_review’:’#f0a030’,
+‘published’:’#4ade80’,‘desk_returned’:’#f0a030’,‘revision_requested’:’#f0a030’,
+‘declined’:’#ef4444’,‘contested’:’#ef4444’}
 def to_card(self, uid=None):
-    lc = Like.query.filter_by(submission_id=self.id).count()
-    cc = Comment.query.filter_by(submission_id=self.id).count()
-    rc = Review.query.filter_by(submission_id=self.id).count()
-    d = {'id':self.id,'blind_id':self.blind_id,'title':self.title,'abstract':(self.abstract or '')[:300],
-         'status':self.status,'status_label':self.STATUS_LABELS.get(self.status,self.status),
-         'status_color':self.STATUS_COLORS.get(self.status,'#6b7db3'),
-         'category':{'name':self.category.name,'emoji':self.category.emoji} if self.category else {},
-         'author':self.author.to_dict() if self.author else {},
-         'tags':[t.strip() for t in (self.tags or '').split(',') if t.strip()],
-         'like_count':lc,'comment_count':cc,'review_count':rc,
-         'created_at':self.created_at.isoformat() if self.created_at else None,
-         'published_at':self.published_at.isoformat() if self.published_at else None}
-    if uid:
-        d['user_liked'] = Like.query.filter_by(user_id=uid,submission_id=self.id).first() is not None
-        d['user_bookmarked'] = Bookmark.query.filter_by(user_id=uid,submission_id=self.id).first() is not None
-    return d
-```
+lc = Like.query.filter_by(submission_id=self.id).count()
+cc = Comment.query.filter_by(submission_id=self.id).count()
+rc = Review.query.filter_by(submission_id=self.id).count()
+d = {‘id’:self.id,‘blind_id’:self.blind_id,‘title’:self.title,‘abstract’:(self.abstract or ‘’)[:300],
+‘status’:self.status,‘status_label’:self.STATUS_LABELS.get(self.status,self.status),
+‘status_color’:self.STATUS_COLORS.get(self.status,’#6b7db3’),
+‘category’:{‘name’:self.category.name,‘emoji’:self.category.emoji} if self.category else {},
+‘author’:self.author.to_dict() if self.author else {},
+‘tags’:[t.strip() for t in (self.tags or ‘’).split(’,’) if t.strip()],
+‘like_count’:lc,‘comment_count’:cc,‘review_count’:rc,
+‘created_at’:self.created_at.isoformat() if self.created_at else None,
+‘published_at’:self.published_at.isoformat() if self.published_at else None}
+if uid:
+d[‘user_liked’] = Like.query.filter_by(user_id=uid,submission_id=self.id).first() is not None
+d[‘user_bookmarked’] = Bookmark.query.filter_by(user_id=uid,submission_id=self.id).first() is not None
+return d
 
 class Like(db.Model):
 id = db.Column(db.Integer, primary_key=True)
@@ -197,34 +180,27 @@ encouragement = db.Column(db.Text)
 scores_json = db.Column(db.Text)
 created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ─── DESK REVIEW ENGINE ──────────────────────────────────────────────────────
-
 def run_desk_review(title, abstract, body):
-lower = f”{title}\n{abstract}\n{body}”.lower()
+lower = (title + ’ ’ + abstract + ’ ’ + body).lower()
 wc = len(body.split())
-terms = [“energy”,“force”,“momentum”,“field”,“wave”,“quantum”,“gravity”,“entropy”,
-“experiment”,“friction”,“chaos”,“nonlinear”,“measurement”,“hypothesis”]
+terms = [‘energy’,‘force’,‘momentum’,‘field’,‘wave’,‘quantum’,‘gravity’,‘entropy’,
+‘experiment’,‘friction’,‘chaos’,‘nonlinear’,‘measurement’,‘hypothesis’]
 pc = sum(1 for t in terms if t in lower)
-claims = [“we show”,“we find”,“i find”,“this paper”,“result shows”,“i measured”,“hypothesis”]
+claims = [‘we show’,‘we find’,‘i find’,‘this paper’,‘result shows’,‘i measured’,‘hypothesis’]
 cc = sum(1 for p in claims if p in lower)
-sections = [“introduction”,“method”,“results”,“discussion”,“conclusion”,“references”]
+sections = [‘introduction’,‘method’,‘results’,‘discussion’,‘conclusion’,‘references’]
 sf = sum(1 for s in sections if s in lower)
-spam = [“buy now”,“click here”,“guaranteed”,“act now”]
+spam = [‘buy now’,‘click here’,‘guaranteed’,‘act now’]
 is_spam = any(s in lower for s in spam)
-
-```
-scores = {'scope':min(5,pc),'claim':min(5,cc+1),'structure':min(5,sf+1),
-          'clarity':4 if wc>300 else 3,'quantitative':3 if re.search(r'\d.*=',body) else 1,
-          'citations':3 if re.search(r'\[\d+\]',body) else 1,'anonymity':5,
-          'good_faith':0 if is_spam else (5 if wc>=200 else 3)}
+scores = {‘scope’:min(5,pc),‘claim’:min(5,cc+1),‘structure’:min(5,sf+1),
+‘clarity’:4 if wc>300 else 3,‘quantitative’:3 if re.search(r’\d.*=’,body) else 1,
+‘citations’:3 if re.search(r’[\d+]’,body) else 1,‘anonymity’:5,
+‘good_faith’:0 if is_spam else (5 if wc>=200 else 3)}
 overall = round(sum(scores.values())/40*100)
-rec = 'block' if is_spam else ('pass' if overall>=60 and scores['good_faith']>=3 else 'return')
-return {'overall_score':overall,'recommendation':rec,'scores':scores,
-        'summary':'Ready for community review.' if rec=='pass' else 'Needs more development.' if rec=='return' else 'Not accepted.',
-        'encouragement':'Your curiosity is valued here.' if rec!='block' else 'We welcome genuine submissions.'}
-```
-
-# ─── AUTH HELPER ──────────────────────────────────────────────────────────────
+rec = ‘block’ if is_spam else (‘pass’ if overall>=60 and scores[‘good_faith’]>=3 else ‘return’)
+return {‘overall_score’:overall,‘recommendation’:rec,‘scores’:scores,
+‘summary’:‘Ready for community review.’ if rec==‘pass’ else ‘Needs more development.’ if rec==‘return’ else ‘Not accepted.’,
+‘encouragement’:‘Your curiosity is valued here.’ if rec!=‘block’ else ‘We welcome genuine submissions.’}
 
 def api_login_required(f):
 @wraps(f)
@@ -232,8 +208,6 @@ def d(*a,**k):
 if not current_user.is_authenticated: return jsonify({‘error’:‘Auth required’}),401
 return f(*a,**k)
 return d
-
-# ─── PWA ROUTES ───────────────────────────────────────────────────────────────
 
 @app.route(’/’)
 def index(): return send_file(‘index.html’)
@@ -246,8 +220,6 @@ def service_worker(): return send_file(‘sw.js’)
 
 @app.route(’/static/<path:p>’)
 def static_files(p): return send_from_directory(‘static’, p)
-
-# ─── API ROUTES ───────────────────────────────────────────────────────────────
 
 @app.route(’/api/auth/register’, methods=[‘POST’])
 def register():
@@ -289,7 +261,7 @@ q = Submission.query.filter(Submission.status.in_([‘in_discovery’,‘under_r
 cat = request.args.get(‘category_id’,type=int)
 if cat: q = q.filter_by(category_id=cat)
 search = request.args.get(‘q’,’’).strip()
-if search: q = q.filter(db.or_(Submission.title.ilike(f’%{search}%’),Submission.abstract.ilike(f’%{search}%’)))
+if search: q = q.filter(db.or_(Submission.title.ilike(’%’+search+’%’),Submission.abstract.ilike(’%’+search+’%’)))
 p = q.order_by(Submission.updated_at.desc()).paginate(page=page,per_page=20,error_out=False)
 uid = current_user.id if current_user.is_authenticated else None
 return jsonify({‘papers’:[s.to_card(uid) for s in p.items],‘total’:p.total,‘page’:p.page})
@@ -377,12 +349,10 @@ return jsonify({‘published_count’:Submission.query.filter_by(status=‘publi
 ‘discovery_count’:Submission.query.filter(Submission.status.in_([‘in_discovery’,‘under_review’])).count(),
 ‘user_count’:User.query.count()})
 
-# ─── DB INIT ──────────────────────────────────────────────────────────────────
-
 def seed():
-cats = [(‘foundations’,‘Foundations of Physics’,‘🌌’),(‘math-physics’,‘Mathematical Physics’,‘📐’),
-(‘nonlinear’,‘Nonlinear Dynamics’,‘🌀’),(‘stat-mech’,‘Statistical Mechanics’,‘⚛️’),
-(‘complex’,‘Complex Systems’,‘🕸️’),(‘experimental’,‘Experimental & Observational’,‘🔬’)]
+cats = [(‘foundations’,‘Foundations of Physics’,‘F’),(‘math-physics’,‘Mathematical Physics’,‘M’),
+(‘nonlinear’,‘Nonlinear Dynamics’,‘N’),(‘stat-mech’,‘Statistical Mechanics’,‘S’),
+(‘complex’,‘Complex Systems’,‘C’),(‘experimental’,‘Experimental and Observational’,‘E’)]
 for slug,name,emoji in cats:
 if not Category.query.filter_by(slug=slug).first():
 db.session.add(Category(slug=slug,name=name,emoji=emoji))
