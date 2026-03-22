@@ -206,8 +206,117 @@ function Notifs({onBack}) {
   </div>;
 }
 
+/* ── ENGINES ─────────────────────────────────────────────── */
+function _desk(t,a,b){const f=t+"\n"+a+"\n"+b,l=f.toLowerCase(),wc=b.split(/\s+/).filter(Boolean).length,sc={scope:0,claim:0,structure:0,clarity:0,quantitative:0,citations:0,anonymity:5,good_faith:0},str=[],sug=[],fl=[];var pt=["energy","force","momentum","field","wave","quantum","gravity","entropy","experiment","friction","chaos","nonlinear","measurement","hypothesis","oscillat","conservation","symmetry","spacetime","curvature"];sc.scope=Math.min(5,Math.floor(pt.filter(function(x){return l.includes(x)}).length/2)+1);if(sc.scope>=4)str.push("Strong physics content");if(sc.scope<2)sug.push("Add physics terminology");var cl=["we show","we find","i find","this paper","result shows","i measured","hypothesis","we conclude","data indicates"];sc.claim=Math.min(5,cl.filter(function(x){return l.includes(x)}).length+1);if(sc.claim>=4)str.push("Clear claims");if(sc.claim<3)sug.push("State central claim explicitly");var se=["introduction","method","results","discussion","conclusion","references","theory"];sc.structure=Math.min(5,se.filter(function(x){return l.includes(x)}).length+1);if(sc.structure>=4)str.push("Well-organized");if(sc.structure<3)sug.push("Add clear sections");sc.clarity=wc/(Math.max(1,(f.match(/[.!?]+/g)||[]).length))<35?4:3;if(wc>=500)sc.clarity=Math.min(5,sc.clarity+1);var q=0;if(/[=]/.test(b)&&/\d/.test(b))q++;if((b.match(/\d+\.?\d*/g)||[]).length>10)q++;if(/\b(cm|m|kg|s|Hz|eV|N|J|W)\b/.test(b))q++;if(/\b(mean|std|p-value)\b/i.test(b))q++;sc.quantitative=Math.min(5,q);if(q>=3)str.push("Strong quantitative content");if(q<2)sug.push("Add data or equations");var ci=0;if((f.match(/\[\d+\]/g)||[]).length>=1)ci+=2;if(l.includes("references"))ci++;sc.citations=Math.min(5,ci);if(ci>=3)str.push("References prior work");if(ci<2)sug.push("Add references");if(/[\w.+-]+@[\w-]+\.[\w.-]+/.test(f)){sc.anonymity-=2;fl.push("Contains email");}var sp=["buy now","click here","guaranteed","act now"];if(sp.some(function(x){return l.includes(x)})){sc.good_faith=0;fl.push("Spam");}else sc.good_faith=wc>=200?5:wc>=100?4:3;if(sc.good_faith>=4)str.push("Sincere inquiry");var vals=Object.keys(sc).map(function(k){return sc[k]});var ov=Math.round(vals.reduce(function(a,b){return a+b},0)/40*100);var rec=sc.good_faith<=1?"block":ov>=60&&sc.good_faith>=3?"pass":"return";return {ov:ov,rec:rec,sc:sc,str:str,sug:sug,fl:fl,sum:rec==="pass"?"Ready for review.":rec==="block"?"Not accepted.":"Needs development.",enc:rec==="block"?"We welcome genuine submissions.":"Your curiosity is valued here."};}
+
+function _ocm(data){var N=data.length,WZ=200,WB=500,E=1e-8;if(N<WB+10) return {err:true};var z=new Array(N).fill(0);for(var t=WZ;t<N;t++){var w=data.slice(t-WZ,t),mu=w.reduce(function(a,b){return a+b},0)/WZ,v=w.reduce(function(a,b){return a+(b-mu)*(b-mu)},0)/WZ;z[t]=(data[t]-mu)/(Math.sqrt(v)+E);}var b2=new Array(N).fill(0);for(var t2=WB;t2<N;t2++)b2[t2]=z.slice(t2-WB,t2).reduce(function(a,v){return a+v},0)/WB;var s=Math.max(WZ,WB),D=data.map(function(_,t){return Math.abs(z[t]-b2[t])}),ind=[];for(var t3=s;t3<N-1;t3++)ind.push(D[t3+1]<D[t3]?1:0);var CR=ind.reduce(function(a,b){return a+b},0)/ind.length,zS=(CR-.5)/Math.sqrt(.25/ind.length);return {CR:+CR.toFixed(6),z:+zS.toFixed(2),cls:CR>.50522?"DRIVEN-DISSIPATIVE":CR<.495?"AUTONOMOUS CHAOTIC":"STOCHASTIC"};}
+
+function _gDuf(n){var x=.5,v=0,t=0;for(var i=0;i<1e4;i++){var a=-.25*v-x*x*x+x+.3*Math.cos(t);v+=a*.005;x+=v*.005;t+=.005;}var o=[];for(var i2=0;i2<n*20;i2++){var a2=-.25*v-x*x*x+x+.3*Math.cos(t);v+=a2*.005;x+=v*.005;t+=.005;o.push(x);}return o.filter(function(_,i){return i%20===0}).slice(0,n);}
+function _gLor(n){var x=1,y=1,z=1;for(var i=0;i<5e3;i++){var dx=10*(y-x)*.01,dy=(x*(28-z)-y)*.01,dz=(x*y-8/3*z)*.01;x+=dx;y+=dy;z+=dz;}var o=[];for(var i2=0;i2<n*10;i2++){var dx2=10*(y-x)*.01,dy2=(x*(28-z)-y)*.01,dz2=(x*y-8/3*z)*.01;x+=dx2;y+=dy2;z+=dz2;o.push(x);}return o.filter(function(_,i){return i%10===0}).slice(0,n);}
+function _gNoi(n){var o=[];for(var i=0;i<n;i++){var u,v,s;do{u=Math.random()*2-1;v=Math.random()*2-1;s=u*u+v*v;}while(s>=1||s===0);o.push(u*Math.sqrt(-2*Math.log(s)/s));}return o;}
+function _mkCA(rule,N,seed){var s=new Array(N).fill(0);s[Math.abs(seed)%N]=1;return {state:s.slice(),step:function(){var o=new Array(N).fill(0);for(var i=0;i<N;i++){var a=this.state[(i-1+N)%N],b=this.state[i],c=this.state[(i+1)%N];o[i]=(rule>>((a<<2)|(b<<1)|c))&1;}this.state=o;return o.map(function(b){return b?1:-1;});}};}
+function _iCLM(K,N){return {psi:Array.from({length:K},function(_,k){var r=new Array(N).fill(0);r[(1337+13*k)%N]=.01;return r;}),G:new Array(N).fill(0),kw:1,Dp:1e-6,ri:0};}
+function _sCLM(st,f,K,N,fg){var psi=st.psi,G=new Array(N).fill(0);for(var n=0;n<N;n++){var s=0;for(var k=0;k<K;k++)s+=psi[k][n];G[n]=s/K;}var nP=Array.from({length:K},function(){return new Array(N)});for(var k2=0;k2<K;k2++)for(var n2=0;n2<N;n2++){var x=psi[k2][n2];var x2=.88*x+.35*(G[n2]-x)+.07*(G[n2]-x)+fg*f[k2][n2];var ax=Math.abs(x);if(ax>1.6)x2+=Math.max(-.25,Math.min(.25,-.14*(ax-1.6)*(x/Math.max(1e-9,ax))));nP[k2][n2]=2.25*Math.tanh(x2/2.25);}var eS=0;for(var k3=0;k3<K;k3++)for(var n3=0;n3<N;n3++)eS+=Math.abs(nP[k3][n3]-G[n3]);var ge=eS/(K*N),df=Math.max(1e-4,.035),kw=Math.max(0,Math.min(10,.75*st.kw+.25*((ge+df)/(Math.max(st.Dp,0)+df))));var stab=Math.max(0,Math.min(1,(1-Math.max(0,kw-1))*(1-ge/.28)));var flat=[];for(var k4=0;k4<K;k4++)for(var n4=0;n4<N;n4++)flat.push(nP[k4][n4]);var prms=Math.sqrt(flat.reduce(function(a,x){return a+x*x},0)/flat.length);return {st:{psi:nP,G:G,kw:kw,Dp:ge,ri:st.ri+Math.max(0,st.Dp-ge)},m:{ge:ge,kw:kw,stab:stab,prms:prms,lbl:kw>1.25?"SURGE":stab>=.5&&ge<.14?"ELIGIBLE":kw<1?"COIL":"DRIFT",ri:st.ri+Math.max(0,st.Dp-ge)},G:G};}
+
+/* Score visuals */
+function SB({s,l}) { var p=s/5*100,c=s>=4?"#4ade80":s>=3?"#5ea8ff":s>=2?"#f0a030":"#ef4444"; return <div style={{marginBottom:5}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:10,fontWeight:700,color:"#6b7db3"}}>{l}</span><span style={{fontSize:10,fontWeight:800,color:c}}>{s}/5</span></div><div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.05)"}}><div style={{height:"100%",borderRadius:2,background:c,width:p+"%",transition:"width .5s"}}/></div></div>; }
+function SR({s,sz=65}) { var r=(sz-8)/2,ci=2*Math.PI*r,of=ci-s/100*ci,c=s>=70?"#4ade80":s>=40?"#f0a030":"#ef4444"; return <div style={{position:"relative",width:sz,height:sz,flexShrink:0}}><svg width={sz} height={sz} style={{transform:"rotate(-90deg)"}}><circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5"/><circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke={c} strokeWidth="5" strokeDasharray={ci} strokeDashoffset={of} strokeLinecap="round" style={{transition:"stroke-dashoffset .8s"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:16,fontWeight:800,color:c}}>{s}</span></div></div>; }
+
+/* ── DESK TOOL ──────────────────────────────────────────── */
+function DeskTool({onBack}) {
+  const [t,sT]=useState(""); const [a,sA]=useState(""); const [b,sB]=useState(""); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const samples=[{l:"Friction paper",tt:"Why Does My Ball Always Stop?",aa:"I rolled a ball 500 times and found exponential decay.",bb:"Introduction\nBalls stop. I measured it.\n\nMethods\n500 trials on wood, sandpaper, tile. Measured stopping distance in cm.\n\nResults\nWood: 187cm (std 12). Sandpaper: 67cm (std 8). Tile: 245cm.\nFit y=A*e^(-bx), R squared 0.91-0.97.\n\nDiscussion\nExponential decay from constant friction fraction.\n\nConclusion\nFriction causes exponential energy loss.\n\nReferences\n[1] Halliday, Fundamentals of Physics"},{l:"Spam test",tt:"BUY CRYPTO",aa:"Click here. Guaranteed.",bb:"Buy now. Act now. Free money. Click here."}];
+  const crit=[{k:"scope",l:"Scope"},{k:"claim",l:"Claims"},{k:"structure",l:"Structure"},{k:"clarity",l:"Clarity"},{k:"quantitative",l:"Quant"},{k:"citations",l:"Literature"},{k:"anonymity",l:"Anonymity"},{k:"good_faith",l:"Good Faith"}];
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 10px"}}>&#x2726; AI Desk Review</h2>
+    <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>{samples.map((s,i) => <button key={i} onClick={() => {sT(s.tt);sA(s.aa);sB(s.bb);sR(null);}} style={{padding:"4px 10px",borderRadius:7,fontSize:11,fontWeight:600,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",color:"#6b7db3",cursor:"pointer"}}>{s.l}</button>)}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+      <input value={t} onChange={(e) => sT(e.target.value)} placeholder="Title" style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:13,fontWeight:600,boxSizing:"border-box"}}/>
+      <textarea value={a} onChange={(e) => sA(e.target.value)} rows={2} placeholder="Abstract" style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+      <textarea value={b} onChange={(e) => sB(e.target.value)} rows={5} placeholder="Paper text" style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+      <button onClick={() => {if(!t||!b)return;sL(true);setTimeout(function(){sR(_desk(t,a,b));sL(false);},1200);}} disabled={ld||!t||!b} style={{padding:"11px",borderRadius:9,border:"none",fontSize:13,fontWeight:700,cursor:t&&b?"pointer":"not-allowed",background:t&&b?"linear-gradient(135deg,#38bdf8,#0ea5e9)":"rgba(255,255,255,0.04)",color:t&&b?"#071120":"#3a4a6e"}}>{ld?"Analyzing...":"Run Review"}</button>
+    </div>
+    {r && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}><SR s={r.ov}/><div style={{flex:1}}><span style={{display:"inline-block",padding:"4px 10px",borderRadius:7,fontSize:12,fontWeight:700,background:r.rec==="pass"?"rgba(74,222,128,0.1)":r.rec==="block"?"rgba(239,68,68,0.1)":"rgba(240,160,48,0.1)",color:r.rec==="pass"?"#4ade80":r.rec==="block"?"#ef4444":"#f0a030"}}>{r.rec==="pass"?"Pass":r.rec==="block"?"Block":"Return"}</span><p style={{fontSize:12,color:"#8a9ac4",marginTop:6,lineHeight:1.4}}>{r.sum}</p></div></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px",marginBottom:12}}>{crit.map((c) => <SB key={c.k} s={r.sc[c.k]} l={c.l}/>)}</div>
+      {r.str.length>0 && <div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:"#4ade80",textTransform:"uppercase",marginBottom:4}}>Strengths</div>{r.str.map((s,i) => <div key={i} style={{fontSize:11,color:"#8a9ac4"}}>{s}</div>)}</div>}
+      {r.sug.length>0 && <div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",marginBottom:4}}>Suggestions</div>{r.sug.map((s,i) => <div key={i} style={{fontSize:11,color:"#8a9ac4"}}>{s}</div>)}</div>}
+      <div style={{padding:"10px 12px",borderRadius:8,background:"rgba(94,168,255,0.04)",border:"1px solid rgba(94,168,255,0.08)"}}><p style={{fontSize:11,color:"#7da8d4",margin:0,fontStyle:"italic"}}>"{r.enc}"</p></div>
+    </div>}
+  </div>;
+}
+
+/* ── OCM TOOL ───────────────────────────────────────────── */
+function OCMTool({onBack}) {
+  const [ds,sDs]=useState(null); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const dsets=[{id:"duf",l:"Driven Duffing",g:function(){return _gDuf(5000)},ex:"DRIVEN-DISSIPATIVE"},{id:"lor",l:"Lorenz",g:function(){return _gLor(5000)},ex:"AUTONOMOUS CHAOTIC"},{id:"noi",l:"White Noise",g:function(){return _gNoi(5000)},ex:"STOCHASTIC"}];
+  const run = (d) => { sR(null); sL(true); sDs(d.id); setTimeout(function(){ sR(_ocm(d.g())); sL(false); }, 600); };
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>Stability Analysis</h2>
+    <p style={{fontSize:12,color:"#6b7db3",margin:"0 0 14px"}}>Classify dynamics as driven-dissipative, stochastic, or chaotic.</p>
+    <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{dsets.map((d) => <button key={d.id} onClick={() => run(d)} disabled={ld} style={{padding:"8px 14px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",background:ds===d.id?"rgba(94,168,255,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(ds===d.id?"rgba(94,168,255,0.3)":"rgba(255,255,255,0.07)"),color:ds===d.id?"#5ea8ff":"#8a9ac4"}}>{d.l}<div style={{fontSize:10,color:"#4a5a7e"}}>{d.ex}</div></button>)}</div>
+    {ld && <div style={{textAlign:"center",padding:24,color:"#5ea8ff",fontSize:13}}>Analyzing 5,000 points...</div>}
+    {r && !r.err && !ld && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16}}>
+      <div style={{padding:"8px 14px",borderRadius:9,fontSize:14,fontWeight:800,display:"inline-block",marginBottom:12,background:r.cls==="DRIVEN-DISSIPATIVE"?"rgba(74,222,128,0.1)":r.cls==="AUTONOMOUS CHAOTIC"?"rgba(167,139,250,0.1)":"rgba(255,255,255,0.05)",color:r.cls==="DRIVEN-DISSIPATIVE"?"#4ade80":r.cls==="AUTONOMOUS CHAOTIC"?"#a78bfa":"#6b7db3"}}>{r.cls}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        <div style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:10,color:"#4a5a7e",fontWeight:700}}>Contraction Rate</div><div style={{fontSize:16,fontWeight:800,color:"#5ea8ff"}}>{r.CR}</div></div>
+        <div style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:10,color:"#4a5a7e",fontWeight:700}}>Z-statistic</div><div style={{fontSize:16,fontWeight:800,color:"#5ea8ff"}}>{r.z}</div></div>
+      </div>
+      <p style={{fontSize:12,color:"#6b7db3",lineHeight:1.5}}>{r.cls==="DRIVEN-DISSIPATIVE"?"Your data has genuine dynamical structure. It actively contracts toward baseline.":r.cls==="AUTONOMOUS CHAOTIC"?"Expansive dynamics dominate. Trajectories diverge.":"No directional structure detected. Consistent with noise."}</p>
+    </div>}
+  </div>;
+}
+
+/* ── CLM TOOL ───────────────────────────────────────────── */
+function CLMTool({onBack}) {
+  const K=7, N=64;
+  const [rule,sRule]=useState(110); const [diff,sDiff]=useState(3);
+  const [running,sRun]=useState(false); const [step,sSt]=useState(0); const [ph,sPh]=useState("idle");
+  const [m,sM]=useState(null); const [Gd,sG]=useState(null);
+  const stR=useRef(null); const caR=useRef(null); const anR=useRef(null);
+  const hR=useRef({kw:[],ge:[]});
+  const init = useCallback(() => {stR.current=_iCLM(K,N);caR.current=Array.from({length:K},function(_,k){return _mkCA(rule,N,1337+101*k)});hR.current={kw:[],ge:[]};sSt(0);sM(null);sG(null);sPh("idle");},[rule]);
+  useEffect(() => {init();},[init]);
+  const go = () => {if(running)return;init();sRun(true);var s=0;var tot=136,set=24,stm=40;var tick=function(){if(s>=tot){sRun(false);sPh("done");return;}var sc,p;if(s<set){sc=.004;p="Settling";}else if(s<set+stm){sc=diff*.02;p="Storm x"+diff;}else{sc=.007;p="Recovery";}sPh(p);var f=caR.current.map(function(ca){return ca.step()});var res=_sCLM(stR.current,f,K,N,sc);stR.current=res.st;hR.current.kw.push(res.m.kw);hR.current.ge.push(res.m.ge);if(hR.current.kw.length>120){hR.current.kw.shift();hR.current.ge.shift();}sM(res.m);sG(res.G.slice());sSt(function(v){return v+1});s++;anR.current=requestAnimationFrame(tick);};anR.current=requestAnimationFrame(tick);};
+  useEffect(() => function(){if(anR.current)cancelAnimationFrame(anR.current)},[]);
+  var lc=m?(m.lbl==="ELIGIBLE"?"#4ade80":m.lbl==="SURGE"?"#ef4444":m.lbl==="COIL"?"#f0a030":"#5ea8ff"):"#5ea8ff";
+  var Sp = function({data,color,w=120,h=24}) {if(!data||data.length<2)return null;var mn=Math.min.apply(null,data),mx=Math.max.apply(null,data),rg=mx-mn||1;return <svg width={w} height={h}><polyline points={data.map(function(v,i){return (i/(data.length-1)*w)+","+(h-((v-mn)/rg)*(h-3)-1.5)}).join(" ")} fill="none" stroke={color} strokeWidth="1.5" opacity=".7"/></svg>;};
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={() => {if(anR.current)cancelAnimationFrame(anR.current);sRun(false);onBack();}} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+      <h2 style={{fontSize:18,fontWeight:800}}>&#x03C8; Coherence Lab</h2>
+      {m && <span style={{padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:lc+"15",color:lc}}>{m.lbl}</span>}
+    </div>
+    <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
+      <button onClick={go} disabled={running} style={{padding:"7px 14px",borderRadius:8,border:"none",background:running?"rgba(255,255,255,0.04)":"linear-gradient(135deg,#c084fc,#7c5cd4)",color:running?"#4a5a7e":"#fff",fontWeight:700,fontSize:12,cursor:running?"default":"pointer"}}>&#9654; {running?"Running...":"Run"}</button>
+      <button onClick={() => {if(anR.current)cancelAnimationFrame(anR.current);sRun(false);init();}} style={{padding:"7px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#5a6a94",fontWeight:700,fontSize:11,cursor:"pointer"}}>Reset</button>
+      <select value={rule} onChange={(e) => {sRule(+e.target.value);init();}} disabled={running} style={{padding:"5px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:11}}><option value={30}>Rule 30</option><option value={90}>Rule 90</option><option value={110}>Rule 110</option></select>
+      <select value={diff} onChange={(e) => {sDiff(+e.target.value);init();}} disabled={running} style={{padding:"5px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:11}}><option value={1}>x1</option><option value={3}>x3</option><option value={5}>x5</option><option value={9}>x9</option></select>
+      <span style={{fontSize:10,color:"#4a5a7e",marginLeft:"auto"}}>{ph} &middot; {step}</span>
+    </div>
+    {Gd && <div style={{height:70,borderRadius:8,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)",marginBottom:10,overflow:"hidden"}}>
+      <svg width="100%" height={70} viewBox={"0 0 "+N+" 70"} preserveAspectRatio="none"><line x1="0" y1="35" x2={N} y2="35" stroke="rgba(255,255,255,0.05)" strokeWidth=".3"/><polyline points={Gd.map(function(v,i){return i+","+(35-v*22)}).join(" ")} fill="none" stroke="#5ea8ff" strokeWidth=".7"/></svg>
+    </div>}
+    {m && <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+      {[{l:"kappa_w",v:m.kw,c:m.kw<1?"#4ade80":"#ef4444",h:hR.current.kw},{l:"Glue Err",v:m.ge,c:"#f0a030",h:hR.current.ge}].map((x) => <div key={x.l} style={{padding:"7px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)"}}>
+        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:10,fontWeight:700,color:"#4a5a7e"}}>{x.l}</span><span style={{fontSize:12,fontWeight:800,color:x.c}}>{x.v.toFixed(4)}</span></div>
+        <Sp data={x.h} color={x.c}/>
+      </div>)}
+    </div>}
+    <div style={{fontSize:11,color:"#5a6a94",lineHeight:1.4,padding:"8px 12px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}>
+      <strong style={{color:"#c084fc"}}>Watching:</strong> {K} field instances under Rule {rule}. kappa &lt; 1 = coherence. Storm disrupts, recovery restores.
+    </div>
+  </div>;
+}
+
 /* ── TOOLS HUB ──────────────────────────────────────────── */
 function Tools({onBack}) {
+  const [at,sAt] = useState(null);
+  if (at==="desk") return <DeskTool onBack={() => sAt(null)}/>;
+  if (at==="ocm") return <OCMTool onBack={() => sAt(null)}/>;
+  if (at==="clm") return <CLMTool onBack={() => sAt(null)}/>;
   const tools = [
     {id:"desk",n:"AI Desk Review",i:"\u2726",c:"#38bdf8",d:"Evaluate any manuscript with the 8-criterion rubric"},
     {id:"ocm",n:"Stability Analysis",i:"\u{1F4CA}",c:"#5ea8ff",d:"Classify data as driven-dissipative, chaotic, or stochastic"},
@@ -218,16 +327,14 @@ function Tools({onBack}) {
     <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Research Tools</h2>
     <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Functional analysis engines. No PhD required.</p>
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {tools.map((t) => <div key={t.id} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",gap:12}}>
+      {tools.map((t) => <div key={t.id} onClick={() => sAt(t.id)} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
         <div style={{width:40,height:40,borderRadius:10,background:t.c+"15",border:"1px solid "+t.c+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{t.i}</div>
         <div style={{flex:1}}>
           <div style={{fontWeight:700,fontSize:14}}>{t.n}</div>
           <div style={{fontSize:12,color:"#6b7db3"}}>{t.d}</div>
         </div>
+        <span style={{color:"#3a4a6e",fontSize:18}}>&#8250;</span>
       </div>)}
-    </div>
-    <div style={{marginTop:14,padding:"10px 14px",borderRadius:10,background:"rgba(94,168,255,0.04)",border:"1px solid rgba(94,168,255,0.08)",fontSize:11,color:"#5a6a94",lineHeight:1.5}}>
-      Tools are interactive in the Claude artifact version. Full tool integration into the deployed app coming in the next update.
     </div>
   </div>;
 }
