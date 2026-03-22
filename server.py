@@ -16,6 +16,7 @@ from flask_login import LoginManager, UserMixin, current_user, login_user, logou
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.exceptions import HTTPException
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 app = Flask(__name__, static_folder='static')
 BASE = Path(__file__).parent
@@ -26,7 +27,9 @@ db_url = os.getenv('DATABASE_URL')
 if db_url and db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
 if not db_url:
-    db_url = 'sqlite:///' + str(INSTANCE / 'journal.db')
+    sqlite_path = Path(os.getenv('SQLITE_PATH', '/tmp/journal.db'))
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    db_url = 'sqlite:///' + str(sqlite_path)
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-change-before-deploy')
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -94,7 +97,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, pw):
-        self.password_hash = generate_password_hash(pw)
+        self.password_hash = generate_password_hash(pw, method='pbkdf2:sha256')
 
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
@@ -143,7 +146,7 @@ class User(UserMixin, db.Model):
 
 @login_manager.user_loader
 def load_user(uid):
-    return User.query.get(int(uid))
+    return db.session.get(User, int(uid))
 
 
 class Category(db.Model):
@@ -343,38 +346,55 @@ def static_files(p):
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
+    d = request.get_json(silent=True) or {}
+    email = (d.get('email') or '').strip().lower()
+    name = (d.get('display_name') or '').strip()
+    pw = d.get('password', '')
+
+    if not email or not name or len(pw) < 6:
+        return jsonify({'error': 'All fields required, password 6+ chars'}), 400
+
     try:
-        d = request.get_json(silent=True) or {}
-        email = (d.get('email') or '').strip().lower()
-        name = (d.get('display_name') or '').strip()
-        pw = d.get('password', '')
-
-        if not email or not name or len(pw) < 6:
-            return jsonify({'error': 'All fields required, password 6+ chars'}), 400
-
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email taken'}), 409
-
         u = User(email=email, display_name=name)
         u.set_password(pw)
         db.session.add(u)
         db.session.commit()
-        login_user(u)
-        return jsonify({'user': u.to_dict()}), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Email taken'}), 409
     except Exception as e:
         db.session.rollback()
         app.logger.exception('Register failed')
         return jsonify({'error': 'Register failed', 'detail': str(e)}), 500
+
+    try:
+        login_user(u, remember=True)
+    except Exception as e:
+        app.logger.exception('Post-register login failed')
+        return jsonify({
+            'error': 'Account created but session login failed',
+            'detail': str(e),
+            'user': u.to_dict()
+        }), 200
+
+    return jsonify({'user': u.to_dict()}), 201
 
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     try:
         d = request.get_json(silent=True) or {}
-        u = User.query.filter_by(email=(d.get('email') or '').strip().lower()).first()
-        if not u or not u.check_password(d.get('password', '')):
+        email = (d.get('email') or '').strip().lower()
+        pw = d.get('password', '')
+
+        if not email or not pw:
+            return jsonify({'error': 'Email and password required'}), 400
+
+        u = User.query.filter_by(email=email).first()
+        if not u or not u.check_password(pw):
             return jsonify({'error': 'Invalid credentials'}), 401
-        login_user(u)
+
+        login_user(u, remember=True)
         return jsonify({'user': u.to_dict()})
     except Exception as e:
         db.session.rollback()
