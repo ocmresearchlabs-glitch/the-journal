@@ -730,10 +730,10 @@ function AuthScreen({onAuth}) {
           _usr = res.data.user;
           _usr.initials = _usr.display_name.split(" ").map(function(w){return w[0]}).join("").toUpperCase().slice(0,2);
           _usr.avatar_color = "#5ea8ff";
-          onAuth(_usr);
+          onAuth(_usr, true);
         } else { sErr(res.data.error || "Something went wrong"); }
       })
-      .catch(function() { sLoading(false); sErr("Could not reach server. Using demo mode."); setTimeout(function(){onAuth(_usr);}, 1500); });
+      .catch(function() { sLoading(false); sErr("Could not reach server. Using demo mode."); setTimeout(function(){onAuth(_usr, false);}, 1500); });
   };
 
   return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
@@ -752,11 +752,17 @@ function AuthScreen({onAuth}) {
         {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
         <button onClick={submit} disabled={loading||!email||!pw||(mode==="register"&&!name)} style={{padding:"12px",borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
       </div>
-      <button onClick={() => onAuth(_usr)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest (demo mode)</button>
+      <button onClick={() => onAuth(_usr, false)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest (demo mode)</button>
       <p style={{fontSize:11,color:"#3a4a6e",textAlign:"center",marginTop:16,lineHeight:1.5}}>No degree required. No institution needed. Just curiosity.</p>
     </div>
   </div>;
 }
+
+/* ── API LAYER ───────────────────────────────────────────── */
+var API = {
+  get: function(url) { return fetch(url, {credentials:"include"}).then(function(r){return r.json()}); },
+  post: function(url, body) { return fetch(url, {method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify(body)}).then(function(r){return r.json()}); }
+};
 
 /* ── MAIN APP ───────────────────────────────────────────── */
 function App() {
@@ -767,15 +773,100 @@ function App() {
   const [q,sQ] = useState("");
   const [sel,sSel] = useState(null);
   const [ns,sNs] = useState([]);
-  const unr = _notifs.filter((n) => !n.is_read).length;
+  const [papers,sPapers] = useState(_papers);
+  const [pubPapers,sPub] = useState(_published);
+  const [notifs,sNotifs] = useState(_notifs);
+  const [feedLoading,sFeedLoading] = useState(false);
+  const [useApi,sUseApi] = useState(false); // true when logged in via real API
+
+  // Load feed from API
+  const loadFeed = (tab) => {
+    if (!useApi) return;
+    sFeedLoading(true);
+    var url = tab === "published" ? "/api/feed/published" : "/api/feed/discovery";
+    if (cf) url += "?category_id=" + cf;
+    API.get(url).then(function(d) {
+      if (d.papers) {
+        // Ensure papers have the shape our Card component expects
+        var mapped = d.papers.map(function(p) {
+          p.comments = p.comments || [];
+          p.author = p.author || _usr;
+          p.author.initials = p.author.initials || (p.author.display_name || "??").slice(0,2).toUpperCase();
+          p.author.avatar_color = p.author.avatar_color || "#5ea8ff";
+          p.category = p.category || {name:"Physics",emoji:"\u{1F4D0}"};
+          p.tags = p.tags || [];
+          return p;
+        });
+        if (tab === "published") sPub(mapped);
+        else sPapers(mapped);
+      }
+      sFeedLoading(false);
+    }).catch(function() { sFeedLoading(false); });
+  };
+
+  // Load on auth and tab switch
+  useEffect(() => { if (useApi) { loadFeed(ft); } }, [useApi, ft, cf]);
+
+  // Load notifications
+  useEffect(() => {
+    if (!useApi) return;
+    API.get("/api/notifications").then(function(d) {
+      if (d.notifications) sNotifs(d.notifications);
+    }).catch(function(){});
+  }, [useApi]);
+
+  const unr = notifs.filter((n) => !n.is_read).length;
 
   const push = (nv,d) => { sNs((s) => [...s,{v,ft,sel}]); if(nv==="paper"){sV("paper");sSel(d);} else if(nv==="profile"){sV("profile");sSel(d);} else sV(nv); };
   const pop = () => { const p=ns[ns.length-1]; if(p){sNs((s)=>s.slice(0,-1));sV(p.v);sFt(p.ft);sSel(p.sel);} else sV("feed"); };
 
-  const all = ft==="published" ? _published : _papers;
-  const filt = all.filter((p) => { if(cf&&p.category.id!==cf) return false; if(q){const s=q.toLowerCase();return p.title.toLowerCase().includes(s)||p.abstract.toLowerCase().includes(s);} return true; });
+  const all = ft==="published" ? pubPapers : papers;
+  const filt = all.filter((p) => { if(cf&&p.category&&p.category.id!==cf) return false; if(q){const s=q.toLowerCase();return (p.title||"").toLowerCase().includes(s)||(p.abstract||"").toLowerCase().includes(s);} return true; });
 
-  if (!authed) return <AuthScreen onAuth={(u) => { _usr = u; sAuthed(true); }} />;
+  // API-wired like handler
+  const handleLike = (paper) => {
+    if (!useApi) return;
+    API.post("/api/submissions/" + paper.blind_id + "/like", {}).then(function(d) {
+      if (d.liked !== undefined) {
+        sPapers(function(prev) { return prev.map(function(p) {
+          if (p.blind_id === paper.blind_id) { p.user_liked = d.liked; p.like_count = d.liked ? (p.like_count||0)+1 : Math.max(0,(p.like_count||1)-1); }
+          return p;
+        }); });
+      }
+    }).catch(function(){});
+  };
+
+  // API-wired submit handler
+  const handleSubmit = (title, abstract, body_text, category_id) => {
+    if (!useApi) {
+      // Guest mode — add to local state
+      var np = {id:Date.now(),blind_id:Math.random().toString(36).slice(2,8).toUpperCase(),title:title,abstract:abstract,status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS.find(function(x){return x.id==+category_id})||CATS[0],author:_usr,tags:[],like_count:0,comment_count:0,review_count:0,created_at:new Date().toISOString(),comments:[]};
+      sPapers(function(prev) { return [np].concat(prev); });
+      return Promise.resolve({ok:true});
+    }
+    return API.post("/api/submissions", {title:title,abstract:abstract,body_text:body_text,category_id:+category_id,tags:""}).then(function(d) {
+      if (d.submission) { loadFeed("discovery"); }
+      return d;
+    });
+  };
+
+  // API-wired comment handler
+  const handleComment = (paper, body) => {
+    if (!useApi) return Promise.resolve({ok:true});
+    return API.post("/api/submissions/" + paper.blind_id + "/comments", {body:body,comment_type:"note"}).then(function(d) {
+      return d;
+    });
+  };
+
+  const onAuth = (u, isRealAuth) => {
+    _usr = u;
+    _usr.initials = _usr.initials || (u.display_name||"??").split(" ").map(function(w){return w[0]}).join("").toUpperCase().slice(0,2);
+    _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+    sAuthed(true);
+    if (isRealAuth) sUseApi(true);
+  };
+
+  if (!authed) return <AuthScreen onAuth={onAuth} />;
 
   return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"}}>
 
