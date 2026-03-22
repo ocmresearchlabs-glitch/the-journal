@@ -247,25 +247,151 @@ function DeskTool({onBack}) {
   </div>;
 }
 
-/* ── OCM TOOL ───────────────────────────────────────────── */
+/* ── OCM TOOL (with file upload) ─────────────────────────── */
 function OCMTool({onBack}) {
   const [ds,sDs]=useState(null); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const [mode,sMode]=useState("samples"); const [rawText,sRaw]=useState("");
+  const [userData,sUD]=useState(null); const [udLabel,sUDL]=useState("");
+  const [cols,sCols]=useState([]); const [colIdx,sCol]=useState(0); const [preview,sPrev]=useState(null);
+  const fileRef=useRef(null);
   const dsets=[{id:"duf",l:"Driven Duffing",g:function(){return _gDuf(5000)},ex:"DRIVEN-DISSIPATIVE"},{id:"lor",l:"Lorenz",g:function(){return _gLor(5000)},ex:"AUTONOMOUS CHAOTIC"},{id:"noi",l:"White Noise",g:function(){return _gNoi(5000)},ex:"STOCHASTIC"}];
-  const run = (d) => { sR(null); sL(true); sDs(d.id); setTimeout(function(){ sR(_ocm(d.g())); sL(false); }, 600); };
+
+  const parseCSV = (text, label) => {
+    var lines = text.trim().split(/\n/).filter(function(l){return l.trim()});
+    if (lines.length < 2) return null;
+    var delim = lines[0].includes('\t') ? '\t' : ',';
+    var rows = lines.map(function(l){return l.split(delim).map(function(c){return c.trim()})});
+    var header = rows[0];
+    var firstRowNumeric = header.every(function(c){return !isNaN(parseFloat(c)) && c !== ''});
+    var dataRows = firstRowNumeric ? rows : rows.slice(1);
+    var colNames = firstRowNumeric ? header.map(function(_,i){return "Column "+(i+1)}) : header;
+    var colData = [];
+    for (var ci=0; ci<colNames.length; ci++) {
+      var vals = [];
+      for (var ri=0; ri<dataRows.length; ri++) {
+        if (ci < dataRows[ri].length) { var v=parseFloat(dataRows[ri][ci]); if (!isNaN(v) && isFinite(v) && dataRows[ri][ci]!=='') vals.push(v); }
+      }
+      colData.push({name:colNames[ci],data:vals,count:vals.length});
+    }
+    var valid = colData.filter(function(c){return c.count>=600});
+    if (valid.length===0) return null;
+    sCols(valid); sCol(0); sUD(valid[0].data); sUDL(label||valid[0].name); sPrev(valid[0].data);
+    return valid;
+  };
+
+  const handleFile = (e) => {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var text = ev.target && ev.target.result;
+      if (typeof text === 'string') {
+        var result = parseCSV(text, file.name);
+        if (result) { sMode("upload"); sR(null); }
+        else { alert("Could not find a numeric column with 600+ values."); }
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handlePaste = () => {
+    if (!rawText.trim()) return;
+    var lines = rawText.trim().split(/[\n,\s]+/).filter(function(l){return l.trim()});
+    var nums = lines.map(function(l){return parseFloat(l.trim())}).filter(function(v){return !isNaN(v)&&isFinite(v)});
+    if (nums.length >= 600) {
+      sUD(nums); sUDL("Pasted data"); sPrev(nums); sCols([{name:"Values",data:nums,count:nums.length}]); sCol(0);
+      sMode("upload"); sR(null); return;
+    }
+    var result = parseCSV(rawText, "Pasted CSV");
+    if (result) { sMode("upload"); sR(null); }
+    else { alert("Need at least 600 numeric values. Found "+nums.length+"."); }
+  };
+
+  const selectCol = (idx) => { if(cols[idx]){sCol(idx);sUD(cols[idx].data);sUDL(cols[idx].name);sPrev(cols[idx].data);sR(null);} };
+  const runAnalysis = (data, label) => { sR(null); sL(true); sDs(label); setTimeout(function(){sR(_ocm(data));sL(false);}, 600); };
+
+  const Spark = ({data,w=260,h=36,color="#5ea8ff"}) => {
+    if(!data||data.length<2) return null;
+    var step=Math.max(1,Math.floor(data.length/w));
+    var sampled=data.filter(function(_,i){return i%step===0});
+    var mn=Math.min.apply(null,sampled),mx=Math.max.apply(null,sampled),rg=mx-mn||1;
+    var pts=sampled.map(function(v,i){return (i/(sampled.length-1)*w)+","+(h-((v-mn)/rg)*(h-4)-2)}).join(" ");
+    return <svg width={w} height={h} style={{display:"block"}}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" opacity="0.7"/></svg>;
+  };
+
   return <div style={{maxWidth:600,margin:"0 auto"}}>
     <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
     <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>Stability Analysis</h2>
-    <p style={{fontSize:12,color:"#6b7db3",margin:"0 0 14px"}}>Classify dynamics as driven-dissipative, stochastic, or chaotic.</p>
-    <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{dsets.map((d) => <button key={d.id} onClick={() => run(d)} disabled={ld} style={{padding:"8px 14px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",background:ds===d.id?"rgba(94,168,255,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(ds===d.id?"rgba(94,168,255,0.3)":"rgba(255,255,255,0.07)"),color:ds===d.id?"#5ea8ff":"#8a9ac4"}}>{d.l}<div style={{fontSize:10,color:"#4a5a7e"}}>{d.ex}</div></button>)}</div>
-    {ld && <div style={{textAlign:"center",padding:24,color:"#5ea8ff",fontSize:13}}>Analyzing 5,000 points...</div>}
-    {r && !r.err && !ld && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16}}>
+    <p style={{fontSize:12,color:"#6b7db3",margin:"0 0 14px"}}>Classify any time series as driven-dissipative, stochastic, or chaotic.</p>
+
+    {/* Mode tabs */}
+    <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:14}}>
+      {[{id:"samples",l:"Sample Data"},{id:"upload",l:"Upload / Paste"}].map((t) =>
+        <button key={t.id} onClick={() => {sMode(t.id);sR(null);}} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode===t.id?"rgba(94,168,255,0.12)":"transparent",color:mode===t.id?"#5ea8ff":"#4a5a7e"}}>{t.l}</button>
+      )}
+    </div>
+
+    {mode==="samples" && <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{dsets.map((d) => <button key={d.id} onClick={() => runAnalysis(d.g(),d.id)} disabled={ld} style={{padding:"8px 14px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",background:ds===d.id?"rgba(94,168,255,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(ds===d.id?"rgba(94,168,255,0.3)":"rgba(255,255,255,0.07)"),color:ds===d.id?"#5ea8ff":"#8a9ac4"}}>{d.l}<div style={{fontSize:10,color:"#4a5a7e"}}>{d.ex}</div></button>)}</div>}
+
+    {mode==="upload" && <div>
+      {/* File upload */}
+      <div style={{marginBottom:12}}>
+        <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={handleFile} style={{display:"none"}}/>
+        <button onClick={() => fileRef.current && fileRef.current.click()} style={{width:"100%",padding:"16px",borderRadius:12,border:"2px dashed rgba(94,168,255,0.2)",background:"rgba(94,168,255,0.03)",color:"#5ea8ff",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          Upload CSV / TSV file
+        </button>
+      </div>
+
+      {/* Paste area */}
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#4a5a7e",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Or paste your data</div>
+        <textarea value={rawText} onChange={(e) => sRaw(e.target.value)} rows={4} placeholder={"Paste numbers (one per line or comma-separated):\n0.234\n0.567\n0.891"} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:12,fontFamily:"monospace",resize:"vertical",boxSizing:"border-box",lineHeight:1.5}}/>
+        <button onClick={handlePaste} disabled={!rawText.trim()} style={{marginTop:6,padding:"8px 16px",borderRadius:8,border:"none",fontSize:12,fontWeight:700,cursor:rawText.trim()?"pointer":"not-allowed",background:rawText.trim()?"rgba(94,168,255,0.12)":"rgba(255,255,255,0.03)",color:rawText.trim()?"#5ea8ff":"#3a4a6e"}}>Parse data</button>
+      </div>
+
+      {/* Column selector */}
+      {cols.length > 1 && <div style={{marginBottom:10}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#4a5a7e",textTransform:"uppercase",marginBottom:6}}>Select column ({cols.length} found)</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cols.map((c,i) => <button key={i} onClick={() => selectCol(i)} style={{padding:"5px 10px",borderRadius:7,fontSize:11,fontWeight:600,cursor:"pointer",background:colIdx===i?"rgba(94,168,255,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(colIdx===i?"rgba(94,168,255,0.25)":"rgba(255,255,255,0.06)"),color:colIdx===i?"#5ea8ff":"#6b7db3"}}>{c.name} ({c.count})</button>)}</div>
+      </div>}
+
+      {/* Preview */}
+      {preview && <div style={{marginBottom:12,padding:"10px 14px",borderRadius:10,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+          <span style={{fontSize:11,fontWeight:700,color:"#5a6a94"}}>{udLabel} &#8212; {preview.length.toLocaleString()} points</span>
+          <span style={{fontSize:10,color:"#3a4a6e"}}>min: {Math.min.apply(null,preview).toFixed(3)} max: {Math.max.apply(null,preview).toFixed(3)}</span>
+        </div>
+        <Spark data={preview}/>
+      </div>}
+
+      {/* Run button */}
+      {userData && <button onClick={() => {if(userData&&userData.length>=600) runAnalysis(userData,udLabel);}} disabled={ld||!userData||userData.length<600} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:userData&&userData.length>=600?"pointer":"not-allowed",background:userData&&userData.length>=600?"linear-gradient(135deg,#5ea8ff,#3d8be0)":"rgba(255,255,255,0.04)",color:userData&&userData.length>=600?"#071120":"#3a4a6e",marginBottom:14}}>
+        Analyze {userData?userData.length.toLocaleString():0} data points
+      </button>}
+
+      {/* Help */}
+      <div style={{padding:"10px 14px",borderRadius:10,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)",fontSize:11,color:"#4a5a7e",lineHeight:1.5}}>
+        <strong style={{color:"#5ea8ff"}}>Formats:</strong> CSV, TSV, or plain numbers. Needs 600+ points. Multi-column files let you pick which column.
+      </div>
+    </div>}
+
+    {/* Results */}
+    {ld && <div style={{textAlign:"center",padding:24,color:"#5ea8ff",fontSize:13}}>Analyzing data points...</div>}
+    {r && !r.err && !ld && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16,marginTop:12}}>
       <div style={{padding:"8px 14px",borderRadius:9,fontSize:14,fontWeight:800,display:"inline-block",marginBottom:12,background:r.cls==="DRIVEN-DISSIPATIVE"?"rgba(74,222,128,0.1)":r.cls==="AUTONOMOUS CHAOTIC"?"rgba(167,139,250,0.1)":"rgba(255,255,255,0.05)",color:r.cls==="DRIVEN-DISSIPATIVE"?"#4ade80":r.cls==="AUTONOMOUS CHAOTIC"?"#a78bfa":"#6b7db3"}}>{r.cls}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
         <div style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:10,color:"#4a5a7e",fontWeight:700}}>Contraction Rate</div><div style={{fontSize:16,fontWeight:800,color:"#5ea8ff"}}>{r.CR}</div></div>
         <div style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:10,color:"#4a5a7e",fontWeight:700}}>Z-statistic</div><div style={{fontSize:16,fontWeight:800,color:"#5ea8ff"}}>{r.z}</div></div>
       </div>
-      <p style={{fontSize:12,color:"#6b7db3",lineHeight:1.5}}>{r.cls==="DRIVEN-DISSIPATIVE"?"Your data has genuine dynamical structure. It actively contracts toward baseline.":r.cls==="AUTONOMOUS CHAOTIC"?"Expansive dynamics dominate. Trajectories diverge.":"No directional structure detected. Consistent with noise."}</p>
+      <div style={{fontSize:12,color:"#6b7db3",lineHeight:1.6}}>
+        {r.cls==="DRIVEN-DISSIPATIVE" ? <p><strong style={{color:"#4ade80"}}>Genuine dynamical structure detected.</strong> CR ({r.CR}) exceeds threshold (0.50522). Active contraction toward baseline — disruption-recovery cycles present.</p>
+        : r.cls==="AUTONOMOUS CHAOTIC" ? <p><strong style={{color:"#a78bfa"}}>Autonomous chaotic dynamics.</strong> CR ({r.CR}) below 0.5 — expansive dynamics dominate.</p>
+        : <p><strong style={{color:"#6b7db3"}}>Stochastic.</strong> CR ({r.CR}) near null expectation. No persistent directional structure.</p>}
+        <p style={{marginTop:8,fontSize:11,color:"#4a5a7e"}}>Threshold: 0.50522. Locked: Wz=200, Wb=500.</p>
+      </div>
     </div>}
+    {r && r.err && !ld && <div style={{padding:16,borderRadius:12,background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",color:"#ef4444",fontSize:13}}>Need at least 600 data points (Wz=200 + Wb=500).</div>}
   </div>;
 }
 
