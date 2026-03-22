@@ -437,21 +437,146 @@ function CLMTool({onBack}) {
   </div>;
 }
 
+/* ── ER TOOL (Topology Mapping) ──────────────────────────── */
+function _er(data) {
+  var N=data.length, WZ=100, stride=50, threshold=0.5, EPS=1e-8;
+  if(N<WZ*3) return {err:true};
+  var nodes=[]; for(var t=WZ;t<N-WZ;t+=stride) nodes.push(t);
+  var segs=nodes.map(function(t){var s=data.slice(t-WZ/2,t+WZ/2);var mu=s.reduce(function(a,b){return a+b},0)/s.length;var v=s.reduce(function(a,b){return a+(b-mu)*(b-mu)},0)/s.length;var std=Math.sqrt(v)+EPS;return s.map(function(x){return (x-mu)/std})});
+  var edges=0, bridges=0, maxGap=0;
+  for(var i=0;i<segs.length;i++) for(var j=i+1;j<segs.length;j++){
+    var n=Math.min(segs[i].length,segs[j].length); var dot=0;
+    for(var k=0;k<n;k++) dot+=segs[i][k]*segs[j][k];
+    if(Math.abs(dot/n)>=threshold){edges++;var gap=Math.abs(nodes[j]-nodes[i]);if(gap>500){bridges++;if(gap>maxGap)maxGap=gap;}}
+  }
+  var density=edges/Math.max(1,nodes.length*(nodes.length-1)/2);
+  var topo=nodes.length<4?"TRIVIAL":bridges>0?"BRIDGED":edges>nodes.length?"CONNECTED":"FRAGMENTED";
+  // Adjacent coherence for throat
+  var adjCoh=[]; for(var i2=0;i2<segs.length-1;i2++){var n2=Math.min(segs[i2].length,segs[i2+1].length);var d2=0;for(var k2=0;k2<n2;k2++)d2+=segs[i2][k2]*segs[i2+1][k2];adjCoh.push(d2/n2);}
+  var minCoh=adjCoh.length>0?Math.min.apply(null,adjCoh):0;
+  var meanCoh=adjCoh.length>0?adjCoh.reduce(function(a,b){return a+b},0)/adjCoh.length:0;
+  return {n:N,nodes:nodes.length,edges:edges,bridges:bridges,density:+density.toFixed(4),topo:topo,minCoh:+minCoh.toFixed(3),meanCoh:+meanCoh.toFixed(3),maxBridgeGap:maxGap,continuity:Math.abs(minCoh)>0.1};
+}
+
+function ERTool({onBack}) {
+  const [ds,sDs]=useState(null); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const dsets=[{id:"duf",l:"Driven Duffing",g:function(){return _gDuf(5000)},ex:"CONNECTED"},{id:"regime",l:"Regime Switch",g:function(){var o=[];for(var t=0;t<5000;t++){var g=_gNoi(1)[0]*.1;o.push(t<1667?Math.sin(2*Math.PI*t/200)+g:t<3333?2*Math.sin(2*Math.PI*t/100)+g:Math.sin(2*Math.PI*t/200)+g);}return o;},ex:"BRIDGED"},{id:"noi",l:"White Noise",g:function(){return _gNoi(5000)},ex:"FRAGMENTED"}];
+  const run = (d) => { sR(null); sL(true); sDs(d.id); setTimeout(function(){ sR(_er(d.g())); sL(false); }, 800); };
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>Topology Mapping</h2>
+    <p style={{fontSize:12,color:"#6b7db3",margin:"0 0 14px"}}>Map coherence structure and detect bridge connections between temporal domains.</p>
+    <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{dsets.map((d) => <button key={d.id} onClick={() => run(d)} disabled={ld} style={{padding:"8px 14px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",background:ds===d.id?"rgba(167,139,250,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(ds===d.id?"rgba(167,139,250,0.3)":"rgba(255,255,255,0.07)"),color:ds===d.id?"#a78bfa":"#8a9ac4"}}>{d.l}<div style={{fontSize:10,color:"#4a5a7e"}}>{d.ex}</div></button>)}</div>
+    {ld && <div style={{textAlign:"center",padding:24,color:"#a78bfa",fontSize:13}}>Building coherence graph...</div>}
+    {r && !r.err && !ld && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16}}>
+      <div style={{padding:"8px 14px",borderRadius:9,fontSize:14,fontWeight:800,display:"inline-block",marginBottom:12,background:r.topo==="CONNECTED"?"rgba(74,222,128,0.1)":r.topo==="BRIDGED"?"rgba(167,139,250,0.1)":r.topo==="FRAGMENTED"?"rgba(239,68,68,0.1)":"rgba(255,255,255,0.05)",color:r.topo==="CONNECTED"?"#4ade80":r.topo==="BRIDGED"?"#a78bfa":r.topo==="FRAGMENTED"?"#ef4444":"#6b7db3"}}>{r.topo}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+        {[{l:"Nodes",v:r.nodes},{l:"Edges",v:r.edges},{l:"Bridges",v:r.bridges},{l:"Density",v:r.density},{l:"Min Coh",v:r.minCoh},{l:"Mean Coh",v:r.meanCoh}].map((m) =>
+          <div key={m.l} style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:10,color:"#4a5a7e",fontWeight:700}}>{m.l}</div><div style={{fontSize:14,fontWeight:800,color:"#a78bfa"}}>{m.v}</div></div>)}
+      </div>
+      <div style={{fontSize:12,color:"#6b7db3",lineHeight:1.6}}>
+        {r.topo==="CONNECTED" ? <p><strong style={{color:"#4ade80"}}>Single coherence domain.</strong> Your data maintains relational continuity throughout — all temporal regions are coherence-connected.</p>
+        : r.topo==="BRIDGED" ? <p><strong style={{color:"#a78bfa"}}>Bridge topology detected.</strong> Your data has {r.bridges} bridge(s) connecting distinct coherence domains across temporal gaps up to {r.maxBridgeGap} steps. This indicates regime transitions with maintained relational continuity.</p>
+        : <p><strong style={{color:"#ef4444"}}>Fragmented topology.</strong> Coherence domains are disconnected. The data lacks persistent relational structure between temporal regions.</p>}
+        <p style={{marginTop:8,fontSize:11,color:"#4a5a7e"}}>Continuity preserved: {r.continuity?"Yes":"No"} (throat min coherence: {r.minCoh})</p>
+      </div>
+    </div>}
+  </div>;
+}
+
+/* ── ICM TOOL (Invariant Detection) ─────────────────────── */
+function _icm(data) {
+  var N=data.length, WZ=200, EPS=1e-8;
+  if(N<WZ*3) return {err:true};
+  // Rolling z-score
+  var z=new Array(N).fill(0);
+  for(var t=WZ;t<N;t++){var w=data.slice(t-WZ,t);var mu=w.reduce(function(a,b){return a+b},0)/WZ;var v=w.reduce(function(a,b){return a+(b-mu)*(b-mu)},0)/WZ;z[t]=(data[t]-mu)/(Math.sqrt(v)+EPS);}
+  // Extract disruptions
+  var events=[], inEv=false, onset=0, peak=0, pVal=0;
+  for(var t2=WZ;t2<N;t2++){var az=Math.abs(z[t2]);
+    if(!inEv&&az>2){inEv=true;onset=t2;peak=t2;pVal=az;}
+    else if(inEv){if(az>pVal){peak=t2;pVal=az;}if(az<1.4){if(t2-onset>=10)events.push({onset:onset,peak:peak,recovery:t2,amp:pVal,recTime:t2-peak,asym:(peak-onset)/Math.max(1,t2-peak)});inEv=false;}}}
+  var nEv=events.length;
+  if(nEv===0) return {n:N,nEv:0,admissible:false,morphClass:"NO_EVENTS",gates:{A1:false,A2:false,A3:false,A4:false},meanAmp:0,meanRec:0,meanAsym:0,regime:"SUBCRITICAL"};
+  var amps=events.map(function(e){return e.amp}),recs=events.map(function(e){return e.recTime}),asyms=events.map(function(e){return e.asym}).filter(isFinite);
+  var mAmp=amps.reduce(function(a,b){return a+b},0)/nEv;
+  var mRec=recs.reduce(function(a,b){return a+b},0)/nEv;
+  var mAsym=asyms.length>0?asyms.reduce(function(a,b){return a+b},0)/asyms.length:1;
+  var stdAmp=Math.sqrt(amps.reduce(function(a,b){return a+(b-mAmp)*(b-mAmp)},0)/nEv);
+  var ampCV=mAmp>0?stdAmp/mAmp:0;
+  // Damping rate
+  var dx=[];for(var t3=1;t3<N;t3++)dx.push(data[t3]-data[t3-1]);
+  var dmu=dx.reduce(function(a,b){return a+b},0)/dx.length;var dxc=dx.map(function(v){return v-dmu});
+  var c0=dxc.reduce(function(a,v){return a+v*v},0)/dxc.length;
+  var c1=0;for(var t4=0;t4<dxc.length-1;t4++)c1+=dxc[t4]*dxc[t4+1];c1/=dxc.length;
+  var rho1=c0>1e-12?c1/c0:0;
+  var damping=(Math.abs(rho1)>1e-12&&Math.abs(rho1)<1)?-Math.log(Math.abs(rho1)):0;
+  var forcing=nEv/N;
+  var R=damping*forcing;
+  var regime=R<1e-10?"SUBCRITICAL":R<0.001?"WEAK":R<0.05?"RESONANT":"SATURATED";
+  var morphClass=mAsym>3?"SHARP_ONSET":mAsym<0.3?"GRADUAL_ONSET":"SYMMETRIC";
+  var A1=nEv>0,A2=(regime==="WEAK"||regime==="RESONANT"),A3=mRec>0&&mRec<N/4,A4=ampCV<3;
+  return {n:N,nEv:nEv,admissible:A1&&A2&&A3&&A4,morphClass:morphClass,gates:{A1:A1,A2:A2,A3:A3,A4:A4},meanAmp:+mAmp.toFixed(3),meanRec:+mRec.toFixed(1),meanAsym:+mAsym.toFixed(3),damping:+damping.toFixed(6),forcing:+forcing.toFixed(6),R:+R.toFixed(8),regime:regime,ampCV:+ampCV.toFixed(3)};
+}
+
+function ICMTool({onBack}) {
+  const [ds,sDs]=useState(null); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const dsets=[{id:"duf",l:"Driven Duffing",g:function(){return _gDuf(5000)},ex:"ADMISSIBLE"},{id:"noi",l:"White Noise",g:function(){return _gNoi(5000)},ex:"INADMISSIBLE"},{id:"kp",l:"Synthetic Kp Storm",g:function(){var o=[2];for(var t=1;t<5000;t++){var base=2+.5*Math.sin(2*Math.PI*t/2920);if(Math.random()<.008)o.push(Math.min(9,base+Math.abs(_gNoi(1)[0]*1.5+5)));else o.push(Math.max(0,o[t-1]*.85+base*.15+_gNoi(1)[0]*.3));}return o;},ex:"ADMISSIBLE"}];
+  const run = (d) => { sR(null); sL(true); sDs(d.id); setTimeout(function(){ sR(_icm(d.g())); sL(false); }, 800); };
+  const Gate = ({name,pass}) => <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:8,background:pass?"rgba(74,222,128,0.06)":"rgba(239,68,68,0.06)",border:"1px solid "+(pass?"rgba(74,222,128,0.15)":"rgba(239,68,68,0.15)"),marginBottom:4}}>
+    <span style={{fontSize:12,fontWeight:700,color:pass?"#4ade80":"#ef4444"}}>{pass?"PASS":"FAIL"}</span>
+    <span style={{fontSize:11,color:"#6b7db3"}}>{name}</span>
+  </div>;
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>Invariant Detection</h2>
+    <p style={{fontSize:12,color:"#6b7db3",margin:"0 0 14px"}}>Detect disruption-recovery morphology and test admissibility conditions.</p>
+    <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{dsets.map((d) => <button key={d.id} onClick={() => run(d)} disabled={ld} style={{padding:"8px 14px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",background:ds===d.id?"rgba(240,160,48,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(ds===d.id?"rgba(240,160,48,0.3)":"rgba(255,255,255,0.07)"),color:ds===d.id?"#f0a030":"#8a9ac4"}}>{d.l}<div style={{fontSize:10,color:"#4a5a7e"}}>{d.ex}</div></button>)}</div>
+    {ld && <div style={{textAlign:"center",padding:24,color:"#f0a030",fontSize:13}}>Extracting disruption morphology...</div>}
+    {r && !r.err && !ld && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16}}>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <span style={{padding:"6px 12px",borderRadius:9,fontSize:13,fontWeight:800,background:r.admissible?"rgba(74,222,128,0.1)":"rgba(239,68,68,0.1)",color:r.admissible?"#4ade80":"#ef4444"}}>{r.admissible?"ADMISSIBLE":"INADMISSIBLE"}</span>
+        <span style={{padding:"6px 12px",borderRadius:9,fontSize:12,fontWeight:700,background:"rgba(240,160,48,0.1)",color:"#f0a030"}}>{r.morphClass}</span>
+        <span style={{padding:"6px 12px",borderRadius:9,fontSize:12,fontWeight:700,background:"rgba(167,139,250,0.1)",color:"#a78bfa"}}>{r.regime}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        {[{l:"Events",v:r.nEv},{l:"Mean Amplitude",v:r.meanAmp},{l:"Mean Recovery",v:r.meanRec},{l:"Asymmetry",v:r.meanAsym},{l:"Resonance R",v:r.R},{l:"Amplitude CV",v:r.ampCV}].map((m) =>
+          <div key={m.l} style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:10,color:"#4a5a7e",fontWeight:700}}>{m.l}</div><div style={{fontSize:14,fontWeight:800,color:"#f0a030"}}>{m.v}</div></div>)}
+      </div>
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:10,fontWeight:700,color:"#5a6a94",textTransform:"uppercase",marginBottom:6}}>Admissibility Gates</div>
+        <Gate name="A1: Disruption events detected" pass={r.gates.A1}/>
+        <Gate name="A2: Resonance condition (WEAK or RESONANT)" pass={r.gates.A2}/>
+        <Gate name="A3: Bounded recovery times" pass={r.gates.A3}/>
+        <Gate name="A4: Morphological regularity (CV &lt; 3)" pass={r.gates.A4}/>
+      </div>
+      <div style={{fontSize:12,color:"#6b7db3",lineHeight:1.6}}>
+        {r.admissible ? <p><strong style={{color:"#4ade80"}}>This substrate is admissible.</strong> It has {r.nEv} detectable disruption-recovery events with {r.morphClass.toLowerCase().replace("_"," ")} morphology. The resonance condition is {r.regime.toLowerCase()} (R={r.R}). This data is structured enough for deeper analysis with the other engines.</p>
+        : <p><strong style={{color:"#ef4444"}}>This substrate is inadmissible.</strong> {r.nEv===0?"No disruption events were detected — the data lacks the disruption-recovery structure needed for ICM analysis.":"Some admissibility gates failed. Check the gate results above for details."}</p>}
+      </div>
+    </div>}
+  </div>;
+}
+
 /* ── TOOLS HUB ──────────────────────────────────────────── */
 function Tools({onBack}) {
   const [at,sAt] = useState(null);
   if (at==="desk") return <DeskTool onBack={() => sAt(null)}/>;
   if (at==="ocm") return <OCMTool onBack={() => sAt(null)}/>;
+  if (at==="er") return <ERTool onBack={() => sAt(null)}/>;
+  if (at==="icm") return <ICMTool onBack={() => sAt(null)}/>;
   if (at==="clm") return <CLMTool onBack={() => sAt(null)}/>;
   const tools = [
     {id:"desk",n:"AI Desk Review",i:"\u2726",c:"#38bdf8",d:"Evaluate any manuscript with the 8-criterion rubric"},
-    {id:"ocm",n:"Stability Analysis",i:"\u{1F4CA}",c:"#5ea8ff",d:"Classify data as driven-dissipative, chaotic, or stochastic"},
+    {id:"ocm",n:"Stability Analysis",i:"\u{1F4CA}",c:"#5ea8ff",d:"Classify data dynamics + upload your own CSV"},
+    {id:"er",n:"Topology Mapping",i:"\u{1F309}",c:"#a78bfa",d:"Map coherence structure and detect bridge connections"},
+    {id:"icm",n:"Invariant Detection",i:"\u{1F52C}",c:"#f0a030",d:"Detect disruption morphology and test admissibility"},
     {id:"clm",n:"Coherence Field Lab",i:"\u03C8",c:"#c084fc",d:"Watch fields self-organize under forcing"},
   ];
   return <div style={{maxWidth:600,margin:"0 auto"}}>
     <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
     <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Research Tools</h2>
-    <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Functional analysis engines. No PhD required.</p>
+    <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Five analysis engines. No PhD required.</p>
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       {tools.map((t) => <div key={t.id} onClick={() => sAt(t.id)} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
         <div style={{width:40,height:40,borderRadius:10,background:t.c+"15",border:"1px solid "+t.c+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{t.i}</div>
@@ -465,8 +590,58 @@ function Tools({onBack}) {
   </div>;
 }
 
+/* ── AUTH SCREEN ─────────────────────────────────────────── */
+function AuthScreen({onAuth}) {
+  const [mode,sMode] = useState("login");
+  const [email,sEmail] = useState("");
+  const [name,sName] = useState("");
+  const [pw,sPw] = useState("");
+  const [err,sErr] = useState("");
+  const [loading,sLoading] = useState(false);
+
+  const submit = () => {
+    sErr(""); sLoading(true);
+    var url = mode==="login" ? "/api/auth/login" : "/api/auth/register";
+    var body = mode==="login" ? {email:email,password:pw} : {email:email,display_name:name,password:pw};
+    fetch(url, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),credentials:"include"})
+      .then(function(r) { return r.json().then(function(d) { return {ok:r.ok,data:d}; }); })
+      .then(function(res) {
+        sLoading(false);
+        if (res.ok && res.data.user) {
+          _usr = res.data.user;
+          _usr.initials = _usr.display_name.split(" ").map(function(w){return w[0]}).join("").toUpperCase().slice(0,2);
+          _usr.avatar_color = "#5ea8ff";
+          onAuth(_usr);
+        } else { sErr(res.data.error || "Something went wrong"); }
+      })
+      .catch(function() { sLoading(false); sErr("Could not reach server. Using demo mode."); setTimeout(function(){onAuth(_usr);}, 1500); });
+  };
+
+  return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
+    <div style={{width:52,height:52,borderRadius:13,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",marginBottom:20}}>&#x29C7;</div>
+    <h1 style={{fontSize:24,fontWeight:800,marginBottom:4}}>The Journal</h1>
+    <p style={{fontSize:13,color:"#5ea8ff",marginBottom:24}}>Independent Physics Platform</p>
+    <div style={{width:"100%",maxWidth:360}}>
+      <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:16}}>
+        <button onClick={() => sMode("login")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="login"?"rgba(94,168,255,0.12)":"transparent",color:mode==="login"?"#5ea8ff":"#4a5a7e"}}>Sign In</button>
+        <button onClick={() => sMode("register")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="register"?"rgba(94,168,255,0.12)":"transparent",color:mode==="register"?"#5ea8ff":"#4a5a7e"}}>Create Account</button>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {mode==="register" && <input value={name} onChange={(e) => sName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>}
+        <input value={email} onChange={(e) => sEmail(e.target.value)} placeholder="Email" type="email" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+        <input value={pw} onChange={(e) => sPw(e.target.value)} placeholder="Password" type="password" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+        {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
+        <button onClick={submit} disabled={loading||!email||!pw||(mode==="register"&&!name)} style={{padding:"12px",borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
+      </div>
+      <button onClick={() => onAuth(_usr)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest (demo mode)</button>
+      <p style={{fontSize:11,color:"#3a4a6e",textAlign:"center",marginTop:16,lineHeight:1.5}}>No degree required. No institution needed. Just curiosity.</p>
+    </div>
+  </div>;
+}
+
 /* ── MAIN APP ───────────────────────────────────────────── */
 function App() {
+  const [authed,sAuthed] = useState(false);
   const [v,sV] = useState("feed");
   const [ft,sFt] = useState("discovery");
   const [cf,sCf] = useState(null);
@@ -480,6 +655,8 @@ function App() {
 
   const all = ft==="published" ? _published : _papers;
   const filt = all.filter((p) => { if(cf&&p.category.id!==cf) return false; if(q){const s=q.toLowerCase();return p.title.toLowerCase().includes(s)||p.abstract.toLowerCase().includes(s);} return true; });
+
+  if (!authed) return <AuthScreen onAuth={(u) => { _usr = u; sAuthed(true); }} />;
 
   return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"}}>
 
