@@ -1,4 +1,4 @@
-“””
+
 The Journal — Deployment Server
 Single-file Flask app serving PWA front-end + JSON API.
 Deploy to Railway, Render, or Fly.io.
