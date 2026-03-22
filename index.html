@@ -403,36 +403,137 @@ function CLMTool({onBack}) {
   const [m,sM]=useState(null); const [Gd,sG]=useState(null);
   const stR=useRef(null); const caR=useRef(null); const anR=useRef(null);
   const hR=useRef({kw:[],ge:[]});
+  const [forcingMode,sFM]=useState("ca"); // "ca" or "custom"
+  const [customData,sCD]=useState(null); const [customLabel,sCL]=useState(""); const [rawText,sRaw]=useState("");
+  const fileRef=useRef(null);
+
   const init = useCallback(() => {stR.current=_iCLM(K,N);caR.current=Array.from({length:K},function(_,k){return _mkCA(rule,N,1337+101*k)});hR.current={kw:[],ge:[]};sSt(0);sM(null);sG(null);sPh("idle");},[rule]);
   useEffect(() => {init();},[init]);
-  const go = () => {if(running)return;init();sRun(true);var s=0;var tot=136,set=24,stm=40;var tick=function(){if(s>=tot){sRun(false);sPh("done");return;}var sc,p;if(s<set){sc=.004;p="Settling";}else if(s<set+stm){sc=diff*.02;p="Storm x"+diff;}else{sc=.007;p="Recovery";}sPh(p);var f=caR.current.map(function(ca){return ca.step()});var res=_sCLM(stR.current,f,K,N,sc);stR.current=res.st;hR.current.kw.push(res.m.kw);hR.current.ge.push(res.m.ge);if(hR.current.kw.length>120){hR.current.kw.shift();hR.current.ge.shift();}sM(res.m);sG(res.G.slice());sSt(function(v){return v+1});s++;anR.current=requestAnimationFrame(tick);};anR.current=requestAnimationFrame(tick);};
+
+  // Custom forcing: normalize uploaded data into N-length forcing vectors
+  const makeCustomForcing = function(data, stepIdx) {
+    var forcing = [];
+    for (var k = 0; k < K; k++) {
+      var row = new Array(N);
+      for (var n = 0; n < N; n++) {
+        // Each instance gets a different phase offset into the data
+        var idx = (stepIdx * N + n + k * 137) % data.length;
+        // Normalize to [-1, 1] range
+        row[n] = data[idx];
+      }
+      forcing.push(row);
+    }
+    return forcing;
+  };
+
+  // Normalize data to [-1, 1]
+  const normalizeData = function(data) {
+    var mn = Math.min.apply(null, data), mx = Math.max.apply(null, data), rg = mx - mn || 1;
+    return data.map(function(v) { return ((v - mn) / rg) * 2 - 1; });
+  };
+
+  const handleFile = function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var text = ev.target && ev.target.result;
+      if (typeof text === 'string') {
+        var nums = text.trim().split(/[\n,\s]+/).map(function(v){return parseFloat(v)}).filter(function(v){return !isNaN(v)&&isFinite(v)});
+        if (nums.length >= 100) { sCD(normalizeData(nums)); sCL(file.name + " (" + nums.length + " pts)"); sFM("custom"); }
+        else alert("Need at least 100 numeric values for forcing signal.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handlePaste = function() {
+    if (!rawText.trim()) return;
+    var nums = rawText.trim().split(/[\n,\s]+/).map(function(v){return parseFloat(v)}).filter(function(v){return !isNaN(v)&&isFinite(v)});
+    if (nums.length >= 100) { sCD(normalizeData(nums)); sCL("Pasted (" + nums.length + " pts)"); sFM("custom"); }
+    else alert("Need 100+ values. Found " + nums.length + ".");
+  };
+
+  const go = () => {
+    if(running) return; init(); sRun(true);
+    var s=0; var tot=136, set=24, stm=40;
+    var tick = function() {
+      if(s>=tot){sRun(false);sPh("done");return;}
+      var sc, p;
+      if(s<set){sc=.004;p="Settling";}else if(s<set+stm){sc=diff*.02;p="Storm x"+diff;}else{sc=.007;p="Recovery";}
+      sPh(p);
+      var f;
+      if (forcingMode==="custom" && customData) {
+        f = makeCustomForcing(customData, s);
+      } else {
+        f = caR.current.map(function(ca){return ca.step()});
+      }
+      var res=_sCLM(stR.current,f,K,N,sc);
+      stR.current=res.st;
+      hR.current.kw.push(res.m.kw);hR.current.ge.push(res.m.ge);
+      if(hR.current.kw.length>120){hR.current.kw.shift();hR.current.ge.shift();}
+      sM(res.m);sG(res.G.slice());sSt(function(v){return v+1});s++;
+      anR.current=requestAnimationFrame(tick);
+    };
+    anR.current=requestAnimationFrame(tick);
+  };
+
   useEffect(() => function(){if(anR.current)cancelAnimationFrame(anR.current)},[]);
   var lc=m?(m.lbl==="ELIGIBLE"?"#4ade80":m.lbl==="SURGE"?"#ef4444":m.lbl==="COIL"?"#f0a030":"#5ea8ff"):"#5ea8ff";
-  var Sp = function({data,color,w=120,h=24}) {if(!data||data.length<2)return null;var mn=Math.min.apply(null,data),mx=Math.max.apply(null,data),rg=mx-mn||1;return <svg width={w} height={h}><polyline points={data.map(function(v,i){return (i/(data.length-1)*w)+","+(h-((v-mn)/rg)*(h-3)-1.5)}).join(" ")} fill="none" stroke={color} strokeWidth="1.5" opacity=".7"/></svg>;};
+  var SpL = function({data,color,w=120,h=24}) {if(!data||data.length<2)return null;var mn=Math.min.apply(null,data),mx=Math.max.apply(null,data),rg=mx-mn||1;return <svg width={w} height={h}><polyline points={data.map(function(v,i){return (i/(data.length-1)*w)+","+(h-((v-mn)/rg)*(h-3)-1.5)}).join(" ")} fill="none" stroke={color} strokeWidth="1.5" opacity=".7"/></svg>;};
+
   return <div style={{maxWidth:600,margin:"0 auto"}}>
     <button onClick={() => {if(anR.current)cancelAnimationFrame(anR.current);sRun(false);onBack();}} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
       <h2 style={{fontSize:18,fontWeight:800}}>&#x03C8; Coherence Lab</h2>
       {m && <span style={{padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:lc+"15",color:lc}}>{m.lbl}</span>}
     </div>
-    <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
-      <button onClick={go} disabled={running} style={{padding:"7px 14px",borderRadius:8,border:"none",background:running?"rgba(255,255,255,0.04)":"linear-gradient(135deg,#c084fc,#7c5cd4)",color:running?"#4a5a7e":"#fff",fontWeight:700,fontSize:12,cursor:running?"default":"pointer"}}>&#9654; {running?"Running...":"Run"}</button>
-      <button onClick={() => {if(anR.current)cancelAnimationFrame(anR.current);sRun(false);init();}} style={{padding:"7px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#5a6a94",fontWeight:700,fontSize:11,cursor:"pointer"}}>Reset</button>
+
+    {/* Forcing source selector */}
+    <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:12}}>
+      <button onClick={() => sFM("ca")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:forcingMode==="ca"?"rgba(192,132,252,0.12)":"transparent",color:forcingMode==="ca"?"#c084fc":"#4a5a7e"}}>Wolfram CA</button>
+      <button onClick={() => sFM("custom")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:forcingMode==="custom"?"rgba(192,132,252,0.12)":"transparent",color:forcingMode==="custom"?"#c084fc":"#4a5a7e"}}>Your Data</button>
+    </div>
+
+    {forcingMode==="ca" && <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
       <select value={rule} onChange={(e) => {sRule(+e.target.value);init();}} disabled={running} style={{padding:"5px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:11}}><option value={30}>Rule 30</option><option value={90}>Rule 90</option><option value={110}>Rule 110</option></select>
       <select value={diff} onChange={(e) => {sDiff(+e.target.value);init();}} disabled={running} style={{padding:"5px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:11}}><option value={1}>x1</option><option value={3}>x3</option><option value={5}>x5</option><option value={9}>x9</option></select>
+    </div>}
+
+    {forcingMode==="custom" && <div style={{marginBottom:12}}>
+      <div style={{marginBottom:8}}>
+        <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={handleFile} style={{display:"none"}}/>
+        <button onClick={() => fileRef.current&&fileRef.current.click()} style={{width:"100%",padding:"14px",borderRadius:10,border:"2px dashed rgba(192,132,252,0.2)",background:"rgba(192,132,252,0.03)",color:"#c084fc",fontWeight:700,fontSize:12,cursor:"pointer"}}>Upload forcing signal (CSV/numbers)</button>
+      </div>
+      <div style={{marginBottom:8}}>
+        <textarea value={rawText} onChange={(e) => sRaw(e.target.value)} rows={2} placeholder="Or paste numbers..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:11,fontFamily:"monospace",resize:"vertical",boxSizing:"border-box"}}/>
+        <button onClick={handlePaste} disabled={!rawText.trim()} style={{marginTop:4,padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,fontWeight:700,cursor:rawText.trim()?"pointer":"not-allowed",background:rawText.trim()?"rgba(192,132,252,0.12)":"rgba(255,255,255,0.03)",color:rawText.trim()?"#c084fc":"#3a4a6e"}}>Parse</button>
+      </div>
+      {customData && <div style={{padding:"8px 12px",borderRadius:8,background:"rgba(192,132,252,0.06)",border:"1px solid rgba(192,132,252,0.15)",fontSize:11,color:"#c084fc",marginBottom:8}}>Forcing loaded: {customLabel}</div>}
+      {!customData && <div style={{padding:"8px 12px",borderRadius:8,background:"rgba(255,255,255,0.02)",fontSize:11,color:"#4a5a7e"}}>Upload a time series (100+ values) to use as the forcing signal. Your data drives the field dynamics.</div>}
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <span style={{fontSize:11,color:"#4a5a7e"}}>Storm intensity:</span>
+        <select value={diff} onChange={(e) => {sDiff(+e.target.value);init();}} disabled={running} style={{padding:"5px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:11}}><option value={1}>x1</option><option value={3}>x3</option><option value={5}>x5</option><option value={9}>x9</option></select>
+      </div>
+    </div>}
+
+    <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
+      <button onClick={go} disabled={running||(forcingMode==="custom"&&!customData)} style={{padding:"7px 14px",borderRadius:8,border:"none",background:(running||(forcingMode==="custom"&&!customData))?"rgba(255,255,255,0.04)":"linear-gradient(135deg,#c084fc,#7c5cd4)",color:(running||(forcingMode==="custom"&&!customData))?"#4a5a7e":"#fff",fontWeight:700,fontSize:12,cursor:(running||(forcingMode==="custom"&&!customData))?"default":"pointer"}}>&#9654; {running?"Running...":"Run"}</button>
+      <button onClick={() => {if(anR.current)cancelAnimationFrame(anR.current);sRun(false);init();}} style={{padding:"7px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#5a6a94",fontWeight:700,fontSize:11,cursor:"pointer"}}>Reset</button>
       <span style={{fontSize:10,color:"#4a5a7e",marginLeft:"auto"}}>{ph} &middot; {step}</span>
     </div>
+
     {Gd && <div style={{height:70,borderRadius:8,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)",marginBottom:10,overflow:"hidden"}}>
       <svg width="100%" height={70} viewBox={"0 0 "+N+" 70"} preserveAspectRatio="none"><line x1="0" y1="35" x2={N} y2="35" stroke="rgba(255,255,255,0.05)" strokeWidth=".3"/><polyline points={Gd.map(function(v,i){return i+","+(35-v*22)}).join(" ")} fill="none" stroke="#5ea8ff" strokeWidth=".7"/></svg>
     </div>}
     {m && <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
       {[{l:"kappa_w",v:m.kw,c:m.kw<1?"#4ade80":"#ef4444",h:hR.current.kw},{l:"Glue Err",v:m.ge,c:"#f0a030",h:hR.current.ge}].map((x) => <div key={x.l} style={{padding:"7px 10px",borderRadius:8,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)"}}>
         <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:10,fontWeight:700,color:"#4a5a7e"}}>{x.l}</span><span style={{fontSize:12,fontWeight:800,color:x.c}}>{x.v.toFixed(4)}</span></div>
-        <Sp data={x.h} color={x.c}/>
+        <SpL data={x.h} color={x.c}/>
       </div>)}
     </div>}
     <div style={{fontSize:11,color:"#5a6a94",lineHeight:1.4,padding:"8px 12px",borderRadius:8,background:"rgba(255,255,255,0.02)"}}>
-      <strong style={{color:"#c084fc"}}>Watching:</strong> {K} field instances under Rule {rule}. kappa &lt; 1 = coherence. Storm disrupts, recovery restores.
+      <strong style={{color:"#c084fc"}}>Watching:</strong> {K} field instances under {forcingMode==="custom"?"your custom forcing signal":"Rule "+rule}. kappa &lt; 1 = coherence. Storm disrupts, recovery restores.
     </div>
   </div>;
 }
