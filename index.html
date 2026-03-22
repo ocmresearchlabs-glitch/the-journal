@@ -1,58 +1,345 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#080c18">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>The Journal</title>
+<meta name="apple-mobile-web-app-title" content="The Journal">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
+<title>The Journal — Independent Physics</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#080c18;color:#edf1ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
-.app{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
-.diamond{width:56px;height:56px;background:linear-gradient(135deg,#5ea8ff,#3d70b8);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin:0 auto 20px}
-h1{font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:6px}
-.sub{font-size:14px;color:#5ea8ff;font-weight:600;margin-bottom:20px}
-.desc{font-size:14px;color:#8a9ac4;line-height:1.6;max-width:440px;margin:0 auto 28px}
-.stats{display:flex;gap:20px;justify-content:center;margin-bottom:32px}
-.stat{text-align:center}
-.stat-num{font-size:28px;font-weight:800;color:#5ea8ff}
-.stat-label{font-size:11px;color:#4a5a7e;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:12px 28px;border-radius:12px;background:linear-gradient(135deg,#5ea8ff,#3d8be0);color:#071120;font-weight:700;font-size:15px;text-decoration:none;border:none;cursor:pointer;margin:4px}
-.btn-sec{background:rgba(255,255,255,0.05);color:#8a9ac4;border:1px solid rgba(255,255,255,0.08)}
-.api-list{display:flex;flex-direction:column;gap:6px;max-width:360px;margin:20px auto 0;text-align:left}
-.api-item{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-family:monospace;font-size:12px;color:#5ea8ff}
-.note{margin-top:24px;padding:14px 18px;border-radius:12px;background:rgba(94,168,255,0.05);border:1px solid rgba(94,168,255,0.1);font-size:13px;color:#6b7db3;max-width:440px;line-height:1.5}
+body{background:#080c18;color:#edf1ff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased}
+#splash{position:fixed;inset:0;background:#080c18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .d{width:52px;height:52px;background:linear-gradient(135deg,#5ea8ff,#3d70b8);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px;animation:pulse 2s ease-in-out infinite}
+#splash h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+#splash p{font-size:13px;color:#5a6a94;margin-top:4px}
+#splash .loading{margin-top:20px;font-size:12px;color:#3a4a6e}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+::placeholder{color:#3a4a6e}
+textarea:focus,input:focus,select:focus{outline:none;border-color:rgba(94,168,255,0.4)!important}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
 </style>
 </head>
 <body>
-<div class="app">
-<div class="diamond">&#x29C7;</div>
-<h1>The Journal</h1>
-<div class="sub">Independent Physics Platform</div>
-<p class="desc">A free platform for independent researchers. No degree required. No institution needed. Just honest investigation and community feedback. The PBS of science apps.</p>
-<div class="stats" id="stats"><div class="stat"><div class="stat-num" id="s-users">-</div><div class="stat-label">Researchers</div></div><div class="stat"><div class="stat-num" id="s-disc">-</div><div class="stat-label">In Discovery</div></div><div class="stat"><div class="stat-num" id="s-pub">-</div><div class="stat-label">Published</div></div></div>
-<div><a class="btn" href="/api/categories">View Categories</a> <a class="btn btn-sec" href="/api/stats">API Status</a></div>
-<div class="api-list">
-<div class="api-item">GET /api/stats</div>
-<div class="api-item">GET /api/categories</div>
-<div class="api-item">GET /api/feed/discovery</div>
-<div class="api-item">GET /api/feed/published</div>
-<div class="api-item">POST /api/auth/register</div>
-<div class="api-item">POST /api/auth/login</div>
-<div class="api-item">POST /api/submissions</div>
-</div>
-<div class="note">Server is live. The full React front-end will be connected in the next update. The API is fully functional — try the endpoints above.</div>
-</div>
-<script>
-fetch('/api/stats').then(r=>r.json()).then(d=>{
-document.getElementById('s-users').textContent=d.user_count||0;
-document.getElementById('s-disc').textContent=d.discovery_count||0;
-document.getElementById('s-pub').textContent=d.published_count||0;
-}).catch(()=>{});
+<div id="splash"><div class="d">&#x29C7;</div><h1>The Journal</h1><p>Independent Physics</p><div class="loading">Loading app...</div></div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
+
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback} = React;
+
+/* ── DATA ────────────────────────────────────────────────── */
+const CATS=[{id:1,slug:"foundations",name:"Foundations of Physics",emoji:"\u{1F30C}"},{id:2,slug:"math-physics",name:"Mathematical Physics",emoji:"\u{1F4D0}"},{id:3,slug:"nonlinear",name:"Nonlinear Dynamics",emoji:"\u{1F300}"},{id:4,slug:"stat-mech",name:"Statistical Mechanics",emoji:"\u269B\uFE0F"},{id:5,slug:"complex",name:"Complex Systems",emoji:"\u{1F578}\uFE0F"},{id:6,slug:"experimental",name:"Experimental & Observational",emoji:"\u{1F52C}"}];
+let _usr={id:1,display_name:"Curious Mind",initials:"CM",bio:"Self-taught physicist.",reputation_score:4.2,paper_count:3,review_count:12,follower_count:8,avatar_color:"#5ea8ff",joined:"2026-01-15"};
+const _users=[_usr,{id:2,display_name:"Telescope Dreamer",initials:"TD",bio:"Retired engineer.",reputation_score:3.8,paper_count:1,review_count:8,follower_count:5,avatar_color:"#f0a030",joined:"2026-02-01"},{id:3,display_name:"Notebook Scientist",initials:"NS",bio:"16 years old. I think about gravity.",reputation_score:2.1,paper_count:2,review_count:3,follower_count:15,avatar_color:"#4ade80",joined:"2026-03-01"},{id:4,display_name:"Field Observer",initials:"FO",bio:"Farmer with 30 years of sky data.",reputation_score:5.0,paper_count:4,review_count:22,follower_count:31,avatar_color:"#a78bfa",joined:"2025-09-10"}];
+let _papers=[
+{id:1,blind_id:"A7F3E1",title:"Recurrence Signatures in Bounded Dynamical Toy Models",abstract:"We construct a minimal bounded manifold and demonstrate that recurrence structure emerges without fine-tuning.",status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS[2],author:_users[0],tags:["recurrence","dynamical systems"],like_count:24,comment_count:7,review_count:2,created_at:"2026-03-14T10:30:00Z",comments:[{id:1,author:_users[3],comment_type:"encouragement",body:"Solid foundational work. Clean methodology.",like_count:5,created_at:"2026-03-14T14:00:00Z"}]},
+{id:2,blind_id:"D1A5B8",title:"Why Does My Ball Always Stop? A Young Person's Investigation of Friction",abstract:"I rolled a tennis ball down ramps 500 times and found an exponential decay pattern in stopping distance.",status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS[5],author:_users[2],tags:["friction","energy","experimental"],like_count:89,comment_count:31,review_count:1,created_at:"2026-03-15T16:45:00Z",comments:[{id:2,author:_users[3],comment_type:"encouragement",body:"500 trials! Have you considered varying the ball mass?",like_count:12,created_at:"2026-03-15T18:00:00Z"},{id:3,author:_users[0],comment_type:"question",body:"Could you share the R-squared values?",like_count:8,created_at:"2026-03-15T19:30:00Z"}]},
+{id:3,blind_id:"C8E2F6",title:"Night Sky Periodicity: 30 Years of Photometric Observations",abstract:"Three decades of backyard measurements reveal an 11.2-year modulation correlating with solar cycles.",status:"in_discovery",status_label:"Nearing Publication",status_color:"#4ade80",category:CATS[5],author:_users[3],tags:["photometry","citizen science"],like_count:67,comment_count:21,review_count:5,created_at:"2026-03-10T14:00:00Z",comments:[]},
+];
+let _published=[{id:101,blind_id:"P1X9Z3",title:"Empirical Power-Law Scaling in Backyard Pendulum Networks",abstract:"47 coupled pendulums demonstrate emergent power-law correlations.",status:"published",status_label:"Published",status_color:"#4ade80",category:CATS[3],author:_users[3],tags:["pendulum","power law"],like_count:142,comment_count:45,review_count:6,created_at:"2026-02-20",published_at:"2026-03-05",comments:[]}];
+let _notifs=[{id:1,title:"Field Observer commented on your paper",body:"500 trials!",is_read:false,created_at:"2026-03-15T18:00:00Z",actor:_users[3]},{id:2,title:"3 people liked your paper",is_read:false,created_at:"2026-03-15T20:00:00Z"}];
+let _liked=new Set(),_saved=new Set(),_fol=new Set();
+const tAgo = (d) => { const m=Math.floor((Date.now()-new Date(d))/6e4); return m<60?m+"m":m<1440?Math.floor(m/60)+"h":Math.floor(m/1440)+"d"; };
+const fDate = (d) => new Date(d).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+
+/* ── ICONS ─────────────────────────────────────────────── */
+function HIcon({d,s=17,f}) { return <svg width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>; }
+function Av({user,size=36}) { return <div style={{width:size,height:size,borderRadius:"50%",background:"linear-gradient(135deg,"+(user.avatar_color||"#5ea8ff")+","+(user.avatar_color||"#5ea8ff")+"88)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0}}>{user.initials||user.display_name.slice(0,2).toUpperCase()}</div>; }
+function Badge({label,color}) { return <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:color+"15",color:color,border:"1px solid "+color+"30"}}><span style={{width:5,height:5,borderRadius:"50%",background:color}}/>{label}</span>; }
+
+/* ── CARD ──────────────────────────────────────────────── */
+function Card({paper,onOpen,onProfile}) {
+  const p = paper;
+  const [lk,sLk] = useState(_liked.has(p.id));
+  const [sv,sSv] = useState(_saved.has(p.id));
+  const [lc,sLc] = useState(p.like_count);
+  return <div onClick={() => onOpen(p)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"16px 18px",cursor:"pointer",marginBottom:10}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <div onClick={(e) => {e.stopPropagation();onProfile(p.author);}} style={{cursor:"pointer"}}><Av user={p.author} size={32}/></div>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+          <span onClick={(e) => {e.stopPropagation();onProfile(p.author);}} style={{fontWeight:600,fontSize:13,cursor:"pointer"}}>{p.author.display_name}</span>
+          <span style={{color:"#5a6a94",fontSize:11}}>{tAgo(p.created_at)}</span>
+        </div>
+        <span style={{fontSize:11,color:"#6b7db3"}}>{p.category.emoji} {p.category.name}</span>
+      </div>
+      <Badge label={p.status_label} color={p.status_color}/>
+    </div>
+    <h3 style={{fontSize:16,fontWeight:700,lineHeight:1.3,margin:"0 0 6px",color:"#f0f4ff"}}>{p.title}</h3>
+    <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:"0 0 10px",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.abstract}</p>
+    {p.tags && p.tags.length > 0 && <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>{p.tags.map((t) => <span key={t} style={{padding:"1px 7px",borderRadius:6,fontSize:10,fontWeight:600,background:"rgba(141,193,255,0.08)",color:"#7da8d4"}}>{t}</span>)}</div>}
+    <div style={{display:"flex",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:10}}>
+      <button onClick={(e) => {e.stopPropagation();const n=!lk;sLk(n);sLc(n?lc+1:lc-1);}} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:lk?"#ff4d6a":"#5a6a94",fontSize:12,fontWeight:600}}>
+        <HIcon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" s={15} f={lk}/> {lc}
+      </button>
+      <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
+        <HIcon d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" s={15}/> {p.comment_count}
+      </span>
+      <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
+        <HIcon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2" s={15}/> {p.review_count}
+      </span>
+      <button onClick={(e) => {e.stopPropagation();sSv(!sv);}} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:sv?"#f0a030":"#5a6a94",fontSize:12,fontWeight:600,marginLeft:"auto"}}>
+        <HIcon d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" s={15} f={sv}/>
+      </button>
+    </div>
+  </div>;
+}
+
+/* ── DETAIL ─────────────────────────────────────────────── */
+function Detail({paper,onBack,onProfile}) {
+  const p = paper;
+  const [c,sC] = useState("");
+  const [cs,sCs] = useState(p.comments || []);
+  const post = () => { if (!c.trim()) return; sCs([...cs,{id:Date.now(),author:_usr,comment_type:"note",body:c,like_count:0,created_at:new Date().toISOString()}]); sC(""); };
+  return <div style={{maxWidth:640,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:20,marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+        <div onClick={() => onProfile(p.author)} style={{cursor:"pointer"}}><Av user={p.author} size={40}/></div>
+        <div style={{flex:1}}>
+          <span onClick={() => onProfile(p.author)} style={{fontWeight:700,fontSize:14,cursor:"pointer"}}>{p.author.display_name}</span>
+          <div style={{fontSize:11,color:"#5a6a94"}}>{p.category.emoji} {p.category.name} &middot; {fDate(p.created_at)}</div>
+        </div>
+        <Badge label={p.status_label} color={p.status_color}/>
+      </div>
+      <h1 style={{fontSize:20,fontWeight:800,lineHeight:1.3,margin:"0 0 10px"}}>{p.title}</h1>
+      <div style={{fontSize:10,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Abstract</div>
+      <p style={{fontSize:14,lineHeight:1.6,color:"#a0aed0",margin:0}}>{p.abstract}</p>
+    </div>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+      <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Discussion ({cs.length})</h3>
+      {cs.map((x) => <div key={x.id} style={{display:"flex",gap:10,marginBottom:14,paddingBottom:14,borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+        <Av user={x.author} size={28}/>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+            <span style={{fontWeight:600,fontSize:12}}>{x.author.display_name}</span>
+            <span style={{fontSize:10,color:"#4a5a7e"}}>{tAgo(x.created_at)}</span>
+            {x.comment_type==="encouragement" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(74,222,128,0.12)",color:"#4ade80",fontWeight:600}}>encouraging</span>}
+            {x.comment_type==="question" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:600}}>question</span>}
+          </div>
+          <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:0}}>{x.body}</p>
+        </div>
+      </div>)}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <Av user={_usr} size={28}/>
+        <div style={{flex:1,position:"relative"}}>
+          <textarea value={c} onChange={(e) => sC(e.target.value)} placeholder="Join the discussion..." onKeyDown={(e) => {if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();post();}}} style={{width:"100%",padding:"9px 40px 9px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:13,resize:"none",minHeight:38,fontFamily:"inherit",boxSizing:"border-box"}}/>
+          <button onClick={post} style={{position:"absolute",right:6,bottom:6,background:c.trim()?"#5ea8ff":"transparent",border:"none",borderRadius:6,padding:5,cursor:"pointer",color:c.trim()?"#071120":"#3a4a6e"}}>&#9658;</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ── SUBMIT ─────────────────────────────────────────────── */
+function Submit({onBack}) {
+  const [t,sT]=useState(""); const [a,sA]=useState(""); const [b,sB]=useState(""); const [cat,sCat]=useState(""); const [done,sD]=useState(false);
+  if (done) return <div style={{maxWidth:480,margin:"0 auto",textAlign:"center",paddingTop:40}}>
+    <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(74,222,128,0.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",border:"2px solid rgba(74,222,128,0.3)",color:"#4ade80",fontSize:24}}>&#10003;</div>
+    <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 8px"}}>Submitted!</h2>
+    <p style={{fontSize:14,color:"#8a9ac4",margin:"0 0 20px"}}>Your work is in Discovery.</p>
+    <button onClick={onBack} style={{padding:"10px 24px",borderRadius:10,background:"#5ea8ff",border:"none",color:"#071120",fontWeight:700,fontSize:13,cursor:"pointer"}}>Back</button>
+  </div>;
+  return <div style={{maxWidth:580,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:22}}>
+      <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Share your work</h2>
+      <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 16px"}}>No credentials required. If you investigated something, this is the place.</p>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <input value={t} onChange={(e) => sT(e.target.value)} placeholder="Title — what did you investigate?" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
+        <select value={cat} onChange={(e) => sCat(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:cat?"#edf1ff":"#3a4a6e",fontSize:12,fontFamily:"inherit",boxSizing:"border-box"}}>
+          <option value="">Category</option>
+          {CATS.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
+        </select>
+        <textarea value={a} onChange={(e) => sA(e.target.value)} rows={3} placeholder="Abstract — summarize your main idea" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+        <textarea value={b} onChange={(e) => sB(e.target.value)} rows={8} placeholder="Full paper text" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+        <button onClick={() => {if(t&&a&&b&&cat){_papers.unshift({id:Date.now(),blind_id:Math.random().toString(36).slice(2,8).toUpperCase(),title:t,abstract:a,status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS.find((x)=>x.id==+cat)||CATS[0],author:_usr,tags:[],like_count:0,comment_count:0,review_count:0,created_at:new Date().toISOString(),comments:[]});sD(true);}}} disabled={!t||!a||!b||!cat} style={{padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:t&&a&&b&&cat?"pointer":"not-allowed",background:t&&a&&b&&cat?"linear-gradient(135deg,#5ea8ff,#3d8be0)":"rgba(255,255,255,0.04)",color:t&&a&&b&&cat?"#071120":"#3a4a6e"}}>Submit for review</button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ── PROFILE ────────────────────────────────────────────── */
+function Profile({user,onBack,onOpen}) {
+  const u = user;
+  const [f,sF] = useState(_fol.has(u.id));
+  const ps = [..._papers,..._published].filter((p) => p.author.id===u.id);
+  return <div style={{maxWidth:580,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:24,textAlign:"center",marginBottom:14}}>
+      <Av user={u} size={64}/>
+      <h2 style={{fontSize:20,fontWeight:800,margin:"12px 0 4px"}}>{u.display_name}</h2>
+      <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{u.bio}</p>
+      <div style={{display:"flex",justifyContent:"center",gap:28,marginBottom:14}}>
+        <div><div style={{fontSize:20,fontWeight:800}}>{u.paper_count}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Papers</div></div>
+        <div><div style={{fontSize:20,fontWeight:800}}>{u.review_count}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Reviews</div></div>
+        <div><div style={{fontSize:20,fontWeight:800,color:"#5ea8ff"}}>{u.reputation_score.toFixed(1)}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Rep</div></div>
+      </div>
+      <button onClick={() => {const n=!f;sF(n);}} style={{padding:"7px 20px",borderRadius:8,background:f?"rgba(255,255,255,0.03)":"rgba(94,168,255,0.12)",border:"1px solid "+(f?"rgba(255,255,255,0.08)":"rgba(94,168,255,0.25)"),color:f?"#5a6a94":"#5ea8ff",fontWeight:700,fontSize:12,cursor:"pointer"}}>{f?"Following":"Follow"}</button>
+    </div>
+    {ps.length > 0 && <div>{ps.map((p) => <Card key={p.id} paper={p} onOpen={onOpen} onProfile={() => {}}/>)}</div>}
+  </div>;
+}
+
+/* ── NOTIFICATIONS ──────────────────────────────────────── */
+function Notifs({onBack}) {
+  return <div style={{maxWidth:580,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 14px"}}>Notifications</h2>
+    {_notifs.map((n) => <div key={n.id} style={{padding:"12px 16px",borderRadius:12,background:n.is_read?"rgba(255,255,255,0.02)":"rgba(94,168,255,0.06)",border:"1px solid "+(n.is_read?"rgba(255,255,255,0.05)":"rgba(94,168,255,0.12)"),marginBottom:8}}>
+      <div style={{fontSize:13,fontWeight:600}}>{n.title}</div>
+      {n.body && <div style={{fontSize:12,color:"#6b7db3",marginTop:2}}>{n.body}</div>}
+    </div>)}
+  </div>;
+}
+
+/* ── TOOLS HUB ──────────────────────────────────────────── */
+function Tools({onBack}) {
+  const tools = [
+    {id:"desk",n:"AI Desk Review",i:"\u2726",c:"#38bdf8",d:"Evaluate any manuscript with the 8-criterion rubric"},
+    {id:"ocm",n:"Stability Analysis",i:"\u{1F4CA}",c:"#5ea8ff",d:"Classify data as driven-dissipative, chaotic, or stochastic"},
+    {id:"clm",n:"Coherence Field Lab",i:"\u03C8",c:"#c084fc",d:"Watch fields self-organize under forcing"},
+  ];
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
+    <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Research Tools</h2>
+    <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Functional analysis engines. No PhD required.</p>
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {tools.map((t) => <div key={t.id} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:40,height:40,borderRadius:10,background:t.c+"15",border:"1px solid "+t.c+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{t.i}</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:14}}>{t.n}</div>
+          <div style={{fontSize:12,color:"#6b7db3"}}>{t.d}</div>
+        </div>
+      </div>)}
+    </div>
+    <div style={{marginTop:14,padding:"10px 14px",borderRadius:10,background:"rgba(94,168,255,0.04)",border:"1px solid rgba(94,168,255,0.08)",fontSize:11,color:"#5a6a94",lineHeight:1.5}}>
+      Tools are interactive in the Claude artifact version. Full tool integration into the deployed app coming in the next update.
+    </div>
+  </div>;
+}
+
+/* ── MAIN APP ───────────────────────────────────────────── */
+function App() {
+  const [v,sV] = useState("feed");
+  const [ft,sFt] = useState("discovery");
+  const [cf,sCf] = useState(null);
+  const [q,sQ] = useState("");
+  const [sel,sSel] = useState(null);
+  const [ns,sNs] = useState([]);
+  const unr = _notifs.filter((n) => !n.is_read).length;
+
+  const push = (nv,d) => { sNs((s) => [...s,{v,ft,sel}]); if(nv==="paper"){sV("paper");sSel(d);} else if(nv==="profile"){sV("profile");sSel(d);} else sV(nv); };
+  const pop = () => { const p=ns[ns.length-1]; if(p){sNs((s)=>s.slice(0,-1));sV(p.v);sFt(p.ft);sSel(p.sel);} else sV("feed"); };
+
+  const all = ft==="published" ? _published : _papers;
+  const filt = all.filter((p) => { if(cf&&p.category.id!==cf) return false; if(q){const s=q.toLowerCase();return p.title.toLowerCase().includes(s)||p.abstract.toLowerCase().includes(s);} return true; });
+
+  return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"}}>
+
+    {/* HEADER */}
+    <header style={{position:"sticky",top:0,zIndex:50,background:"rgba(8,12,24,0.92)",backdropFilter:"blur(16px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+      <div style={{maxWidth:680,margin:"0 auto",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div onClick={() => {sV("feed");sNs([]);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:28,height:28,borderRadius:7,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800}}>&#x29C7;</div>
+          <span style={{fontWeight:800,fontSize:15}}>The Journal</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={() => push("submit")} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",border:"none",color:"#071120",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Submit</button>
+          <button onClick={() => push("notifs")} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#5a6a94",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
+            <HIcon d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" s={15}/>
+            {unr > 0 && <span style={{position:"absolute",top:5,right:5,width:6,height:6,borderRadius:"50%",background:"#ff4d6a"}}/>}
+          </button>
+          <div onClick={() => push("profile",_usr)} style={{cursor:"pointer"}}><Av user={_usr} size={30}/></div>
+        </div>
+      </div>
+    </header>
+
+    {/* CONTENT */}
+    <main style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
+      {v==="feed" && <div style={{animation:"fadeIn .25s"}}>
+        <div style={{marginBottom:14,padding:"14px 16px",borderRadius:12,background:"linear-gradient(135deg,rgba(94,168,255,0.05),rgba(94,168,255,0.02))",border:"1px solid rgba(94,168,255,0.08)"}}>
+          <p style={{fontSize:13,color:"#8a9ac4",margin:0,lineHeight:1.5}}><span style={{color:"#5ea8ff",fontWeight:700}}>Welcome.</span> No degree required. Just honest investigation and community feedback.</p>
+        </div>
+        {/* Tabs */}
+        <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:12}}>
+          <button onClick={() => sFt("discovery")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:ft==="discovery"?"rgba(94,168,255,0.12)":"transparent",color:ft==="discovery"?"#5ea8ff":"#4a5a7e"}}>Discovery</button>
+          <button onClick={() => sFt("published")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:ft==="published"?"rgba(94,168,255,0.12)":"transparent",color:ft==="published"?"#5ea8ff":"#4a5a7e"}}>Published</button>
+        </div>
+        {/* Search */}
+        <div style={{position:"relative",marginBottom:10}}>
+          <input value={q} onChange={(e) => sQ(e.target.value)} placeholder="Search papers..." style={{width:"100%",padding:"9px 12px 9px 32px",borderRadius:10,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+          <div style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#3a4a6e",pointerEvents:"none"}}>
+            <HIcon d="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" s={14}/>
+          </div>
+        </div>
+        {/* Categories */}
+        <div style={{display:"flex",gap:5,overflowX:"auto",marginBottom:12,WebkitOverflowScrolling:"touch"}}>
+          <button onClick={() => sCf(null)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,background:!cf?"rgba(94,168,255,0.1)":"transparent",borderColor:!cf?"rgba(94,168,255,0.2)":"rgba(255,255,255,0.06)",color:!cf?"#5ea8ff":"#4a5a7e"}}>All</button>
+          {CATS.map((c) => <button key={c.id} onClick={() => sCf(c.id)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,background:cf===c.id?"rgba(94,168,255,0.1)":"transparent",borderColor:cf===c.id?"rgba(94,168,255,0.2)":"rgba(255,255,255,0.06)",color:cf===c.id?"#5ea8ff":"#4a5a7e"}}>{c.emoji} {c.name}</button>)}
+        </div>
+        {/* Feed */}
+        {filt.map((p,i) => <div key={p.id} style={{animation:"fadeIn .25s ease "+i*0.04+"s both"}}><Card paper={p} onOpen={(p) => push("paper",p)} onProfile={(u) => push("profile",u)}/></div>)}
+        {filt.length===0 && <div style={{textAlign:"center",padding:30,color:"#4a5a7e"}}><p>No papers found.</p></div>}
+      </div>}
+      {v==="paper" && sel && <div style={{animation:"fadeIn .2s"}}><Detail paper={sel} onBack={pop} onProfile={(u) => push("profile",u)}/></div>}
+      {v==="profile" && sel && <div style={{animation:"fadeIn .2s"}}><Profile user={sel} onBack={pop} onOpen={(p) => push("paper",p)}/></div>}
+      {v==="submit" && <div style={{animation:"fadeIn .2s"}}><Submit onBack={pop}/></div>}
+      {v==="notifs" && <div style={{animation:"fadeIn .2s"}}><Notifs onBack={pop}/></div>}
+      {v==="tools" && <div style={{animation:"fadeIn .2s"}}><Tools onBack={pop}/></div>}
+    </main>
+
+    {/* BOTTOM NAV */}
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:"rgba(8,12,24,0.94)",backdropFilter:"blur(16px)",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-around",padding:"6px 0 calc(6px + env(safe-area-inset-bottom))"}}>
+      <button onClick={() => {sV("feed");sFt("discovery");sNs([]);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="feed"&&ft==="discovery"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+        <HIcon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" s={19}/><span>Discover</span>
+      </button>
+      <button onClick={() => {sV("feed");sFt("published");sNs([]);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="feed"&&ft==="published"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+        <HIcon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M18 2H6v7a6 6 0 0 0 12 0V2Z" s={19}/><span>Published</span>
+      </button>
+      <button onClick={() => push("submit")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="submit"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+        <HIcon d="M12 5v14M5 12h14" s={19}/><span>Submit</span>
+      </button>
+      <button onClick={() => push("tools")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="tools"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+        <HIcon d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12" s={19}/><span>Tools</span>
+      </button>
+      <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+        <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
+      </button>
+    </nav>
+  </div>;
+}
+
+/* ── MOUNT ──────────────────────────────────────────────── */
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+// Hide splash
+setTimeout(() => { const s = document.getElementById('splash'); if (s) s.classList.add('hide'); }, 600);
 </script>
+
+<script>
+// Fallback: if Babel/React fails to load after 15s, show a message
+setTimeout(function() {
+  var r = document.getElementById('root');
+  if (r && !r.hasChildNodes()) {
+    var s = document.getElementById('splash');
+    if (s) s.innerHTML = '<div class="d" style="background:linear-gradient(135deg,#5ea8ff,#3d70b8);width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px">&#x29C7;</div><h1>The Journal</h1><p style="color:#5a6a94;margin-top:4px">Independent Physics</p><p style="color:#ef4444;margin-top:16px;font-size:13px">App is loading slowly. Try refreshing.</p><a href="/api/stats" style="color:#5ea8ff;margin-top:8px;font-size:12px;display:block">Check API Status</a>';
+  }
+}, 15000);
+</script>
+
 </body>
 </html>
