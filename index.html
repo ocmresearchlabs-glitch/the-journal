@@ -719,27 +719,49 @@ function AuthScreen({onAuth}) {
   const [loading,sLoading] = useState(false);
 
   const submit = () => {
-    sErr(""); sLoading(true);
-    var url = mode==="login" ? "/api/auth/login" : "/api/auth/register";
-    var body = mode==="login" ? {email:email.trim(),password:pw} : {email:email.trim(),display_name:name.trim(),password:pw};
+    sErr("");
+    sLoading(true);
+
+    var url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+    var body = mode === "login"
+      ? { email: email.trim(), password: pw }
+      : { email: email.trim(), display_name: name.trim(), password: pw };
+
     var xhr = new XMLHttpRequest();
     xhr.open("POST", url, true);
+    xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", "application/json");
+
     xhr.onload = function() {
       sLoading(false);
-      try {
-        var res = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300 && res.user) {
-          _usr = res.user;
-          _usr.initials = (_usr.display_name||"??").split(" ").map(function(w){return w[0]}).join("").toUpperCase().slice(0,2);
-          _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
-          onAuth(_usr, true);
-        } else {
-          sErr(res.error || "Error (status " + xhr.status + ")");
-        }
-      } catch(e) { sErr("Parse error: " + xhr.status + " " + xhr.responseText.slice(0,100)); }
+
+      var text = xhr.responseText || "";
+      var res = {};
+      try { res = text ? JSON.parse(text) : {}; } catch (e) {}
+
+      if (xhr.status >= 200 && xhr.status < 300 && res.user) {
+        _usr = res.user;
+        _usr.initials = (_usr.initials || (_usr.display_name || "??")
+          .split(" ")
+          .map(function(w){ return w[0]; })
+          .join("")
+          .toUpperCase()
+          .slice(0, 2));
+        _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+        onAuth(_usr, true);
+        return;
+      }
+
+      var msg = res.error || ("Error (" + xhr.status + ")");
+      if (res.detail) msg += ": " + res.detail;
+      sErr(msg);
     };
-    xhr.onerror = function() { sLoading(false); sErr("Network error. Status: " + xhr.status); };
+
+    xhr.onerror = function() {
+      sLoading(false);
+      sErr("Network error");
+    };
+
     xhr.send(JSON.stringify(body));
   };
 
@@ -771,7 +793,11 @@ var API = {
     return new Promise(function(resolve) {
       var xhr = new XMLHttpRequest();
       xhr.open("GET", url, true);
-      xhr.onload = function() { try { resolve(JSON.parse(xhr.responseText)); } catch(e) { resolve({}); } };
+      xhr.withCredentials = true;
+      xhr.onload = function() {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch(e) { resolve({}); }
+      };
       xhr.onerror = function() { resolve({}); };
       xhr.send();
     });
@@ -780,8 +806,12 @@ var API = {
     return new Promise(function(resolve) {
       var xhr = new XMLHttpRequest();
       xhr.open("POST", url, true);
+      xhr.withCredentials = true;
       xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.onload = function() { try { resolve(JSON.parse(xhr.responseText)); } catch(e) { resolve({}); } };
+      xhr.onload = function() {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch(e) { resolve({}); }
+      };
       xhr.onerror = function() { resolve({}); };
       xhr.send(JSON.stringify(body));
     });
@@ -802,6 +832,23 @@ function App() {
   const [notifs,sNotifs] = useState(_notifs);
   const [feedLoading,sFeedLoading] = useState(false);
   const [useApi,sUseApi] = useState(false); // true when logged in via real API
+
+  useEffect(() => {
+    API.get("/api/auth/me").then(function(d) {
+      if (d && d.user) {
+        _usr = d.user;
+        _usr.initials = _usr.initials || (_usr.display_name || "??")
+          .split(" ")
+          .map(function(w){ return w[0]; })
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
+        _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+        sAuthed(true);
+        sUseApi(true);
+      }
+    });
+  }, []);
 
   // Load feed from API
   const loadFeed = (tab) => {
