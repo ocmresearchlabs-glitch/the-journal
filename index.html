@@ -720,20 +720,23 @@ function AuthScreen({onAuth}) {
 
   const submit = () => {
     sErr(""); sLoading(true);
-    var url = mode==="login" ? "/api/auth/login" : "/api/auth/register";
-    var body = mode==="login" ? {email:email,password:pw} : {email:email,display_name:name,password:pw};
-    fetch(url, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
-      .then(function(r) { return r.json().then(function(d) { return {ok:r.ok,data:d}; }); })
-      .then(function(res) {
-        sLoading(false);
-        if (res.ok && res.data.user) {
-          _usr = res.data.user;
-          _usr.initials = (_usr.display_name||"??").split(" ").map(function(w){return w[0]}).join("").toUpperCase().slice(0,2);
-          _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
-          onAuth(_usr, true);
-        } else { sErr(res.data.error || "Something went wrong"); }
-      })
-      .catch(function(err) { sLoading(false); sErr("Connection error: " + (err.message||"unknown") + ". Try again."); });
+    var base = window.location.origin;
+    var url = mode==="login" ? base+"/api/auth/login" : base+"/api/auth/register";
+    var body = mode==="login" ? {email:email.trim(),password:pw} : {email:email.trim(),display_name:name.trim(),password:pw};
+    try {
+      fetch(url, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+        .then(function(r) { return r.json().then(function(d) { return {ok:r.ok,data:d}; }); })
+        .then(function(res) {
+          sLoading(false);
+          if (res.ok && res.data.user) {
+            _usr = res.data.user;
+            _usr.initials = (_usr.display_name||"??").split(" ").map(function(w){return w[0]}).join("").toUpperCase().slice(0,2);
+            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+            onAuth(_usr, true);
+          } else { sErr(res.data.error || "Something went wrong"); }
+        })
+        .catch(function(err) { sLoading(false); sErr("Network error: " + (err.message||"unknown")); });
+    } catch(e) { sLoading(false); sErr("Error: " + (e.message||"unknown")); }
   };
 
   return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
@@ -760,8 +763,9 @@ function AuthScreen({onAuth}) {
 
 /* ── API LAYER ───────────────────────────────────────────── */
 var API = {
-  get: function(url) { return fetch(url).then(function(r){return r.json()}).catch(function(){return {}}); },
-  post: function(url, body) { return fetch(url, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json()}).catch(function(){return {}}); }
+  base: window.location.origin,
+  get: function(url) { return fetch(this.base+url).then(function(r){return r.json()}).catch(function(){return {}}); },
+  post: function(url, body) { return fetch(this.base+url, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json()}).catch(function(){return {}}); }
 };
 
 /* ── MAIN APP ───────────────────────────────────────────── */
