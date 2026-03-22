@@ -1,80 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-    <meta name="theme-color" content="#080c18">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="The Journal">
-    <meta name="description" content="A free platform for independent physics researchers. No degree required.">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <title>The Journal — Independent Physics</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #080c18; color: #edf1ff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
-        #root { min-height: 100vh; min-height: 100dvh; }
-        /* Splash screen while React loads */
-        #splash { position: fixed; inset: 0; background: #080c18; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.3s; }
-        #splash.hide { opacity: 0; pointer-events: none; }
-        #splash .diamond { width: 48px; height: 48px; background: linear-gradient(135deg, #5ea8ff, #3d70b8); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite; }
-        #splash h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-        #splash p { font-size: 13px; color: #5a6a94; margin-top: 4px; }
-        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080c18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>The Journal</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080c18;color:#edf1ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+.app{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.diamond{width:56px;height:56px;background:linear-gradient(135deg,#5ea8ff,#3d70b8);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin:0 auto 20px}
+h1{font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:6px}
+.sub{font-size:14px;color:#5ea8ff;font-weight:600;margin-bottom:20px}
+.desc{font-size:14px;color:#8a9ac4;line-height:1.6;max-width:440px;margin:0 auto 28px}
+.stats{display:flex;gap:20px;justify-content:center;margin-bottom:32px}
+.stat{text-align:center}
+.stat-num{font-size:28px;font-weight:800;color:#5ea8ff}
+.stat-label{font-size:11px;color:#4a5a7e;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:12px 28px;border-radius:12px;background:linear-gradient(135deg,#5ea8ff,#3d8be0);color:#071120;font-weight:700;font-size:15px;text-decoration:none;border:none;cursor:pointer;margin:4px}
+.btn-sec{background:rgba(255,255,255,0.05);color:#8a9ac4;border:1px solid rgba(255,255,255,0.08)}
+.api-list{display:flex;flex-direction:column;gap:6px;max-width:360px;margin:20px auto 0;text-align:left}
+.api-item{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-family:monospace;font-size:12px;color:#5ea8ff}
+.note{margin-top:24px;padding:14px 18px;border-radius:12px;background:rgba(94,168,255,0.05);border:1px solid rgba(94,168,255,0.1);font-size:13px;color:#6b7db3;max-width:440px;line-height:1.5}
+</style>
 </head>
 <body>
-    <div id="splash">
-        <div class="diamond">⧫</div>
-        <h1>The Journal</h1>
-        <p>Independent Physics</p>
-    </div>
-    <div id="root"></div>
-
-    <!-- React via CDN -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- App -->
-    <script type="text/babel" data-type="module">
-    // Hide splash after load
-    window.addEventListener('load', () => {
-        setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 800);
-    });
-
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-
-    const { useState, useEffect, useRef, useCallback } = React;
-
-    // ── The full app code goes here ──
-    // In production, this would be a bundled React build.
-    // For now, we inline the journal-app component.
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-
-    function App() {
-        return React.createElement('div', {
-            style: { minHeight: '100vh', background: 'linear-gradient(180deg, #080c18, #0d1225 30%, #0a0f1e)', color: '#edf1ff', fontFamily: "'DM Sans','Helvetica Neue',sans-serif", padding: '60px 20px', textAlign: 'center' }
-        },
-            React.createElement('div', { style: { width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #5ea8ff, #3d70b8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, margin: '0 auto 16px' } }, '⧫'),
-            React.createElement('h1', { style: { fontSize: 24, fontWeight: 800, marginBottom: 8 } }, 'The Journal'),
-            React.createElement('p', { style: { fontSize: 15, color: '#8a9ac4', marginBottom: 24, maxWidth: 400, margin: '0 auto 24px' } }, 'Independent Physics Platform — The PBS of Science Apps'),
-            React.createElement('p', { style: { fontSize: 13, color: '#5a6a94', maxWidth: 500, margin: '0 auto 32px', lineHeight: 1.6 } },
-                'Server is running. To see the full app, build the React front-end and place the bundle in this directory. The API is live at /api/'),
-            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 300, margin: '0 auto' } },
-                ['GET /api/stats', 'GET /api/categories', 'GET /api/feed/discovery', 'GET /api/feed/published', 'POST /api/auth/register', 'POST /api/submissions'].map(ep =>
-                    React.createElement('code', { key: ep, style: { padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', fontSize: 12, color: '#5ea8ff', textAlign: 'left' } }, ep)
-                )
-            )
-        );
-    }
-
-    root.render(React.createElement(App));
-    </script>
+<div class="app">
+<div class="diamond">&#x29C7;</div>
+<h1>The Journal</h1>
+<div class="sub">Independent Physics Platform</div>
+<p class="desc">A free platform for independent researchers. No degree required. No institution needed. Just honest investigation and community feedback. The PBS of science apps.</p>
+<div class="stats" id="stats"><div class="stat"><div class="stat-num" id="s-users">-</div><div class="stat-label">Researchers</div></div><div class="stat"><div class="stat-num" id="s-disc">-</div><div class="stat-label">In Discovery</div></div><div class="stat"><div class="stat-num" id="s-pub">-</div><div class="stat-label">Published</div></div></div>
+<div><a class="btn" href="/api/categories">View Categories</a> <a class="btn btn-sec" href="/api/stats">API Status</a></div>
+<div class="api-list">
+<div class="api-item">GET /api/stats</div>
+<div class="api-item">GET /api/categories</div>
+<div class="api-item">GET /api/feed/discovery</div>
+<div class="api-item">GET /api/feed/published</div>
+<div class="api-item">POST /api/auth/register</div>
+<div class="api-item">POST /api/auth/login</div>
+<div class="api-item">POST /api/submissions</div>
+</div>
+<div class="note">Server is live. The full React front-end will be connected in the next update. The API is fully functional — try the endpoints above.</div>
+</div>
+<script>
+fetch('/api/stats').then(r=>r.json()).then(d=>{
+document.getElementById('s-users').textContent=d.user_count||0;
+document.getElementById('s-disc').textContent=d.discovery_count||0;
+document.getElementById('s-pub').textContent=d.published_count||0;
+}).catch(()=>{});
+</script>
 </body>
 </html>
