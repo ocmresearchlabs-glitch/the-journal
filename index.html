@@ -43,14 +43,10 @@ const {useState,useEffect,useRef,useCallback} = React;
 /* ── DATA ────────────────────────────────────────────────── */
 const CATS=[{id:1,slug:"foundations",name:"Foundations of Physics",emoji:"\u{1F30C}"},{id:2,slug:"math-physics",name:"Mathematical Physics",emoji:"\u{1F4D0}"},{id:3,slug:"nonlinear",name:"Nonlinear Dynamics",emoji:"\u{1F300}"},{id:4,slug:"stat-mech",name:"Statistical Mechanics",emoji:"\u269B\uFE0F"},{id:5,slug:"complex",name:"Complex Systems",emoji:"\u{1F578}\uFE0F"},{id:6,slug:"experimental",name:"Experimental & Observational",emoji:"\u{1F52C}"}];
 let _usr={id:1,display_name:"Curious Mind",initials:"CM",bio:"Self-taught physicist.",reputation_score:4.2,paper_count:3,review_count:12,follower_count:8,avatar_color:"#5ea8ff",joined:"2026-01-15"};
-const _users=[_usr,{id:2,display_name:"Telescope Dreamer",initials:"TD",bio:"Retired engineer.",reputation_score:3.8,paper_count:1,review_count:8,follower_count:5,avatar_color:"#f0a030",joined:"2026-02-01"},{id:3,display_name:"Notebook Scientist",initials:"NS",bio:"16 years old. I think about gravity.",reputation_score:2.1,paper_count:2,review_count:3,follower_count:15,avatar_color:"#4ade80",joined:"2026-03-01"},{id:4,display_name:"Field Observer",initials:"FO",bio:"Farmer with 30 years of sky data.",reputation_score:5.0,paper_count:4,review_count:22,follower_count:31,avatar_color:"#a78bfa",joined:"2025-09-10"}];
-let _papers=[
-{id:1,blind_id:"A7F3E1",title:"Recurrence Signatures in Bounded Dynamical Toy Models",abstract:"We construct a minimal bounded manifold and demonstrate that recurrence structure emerges without fine-tuning.",status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS[2],author:_users[0],tags:["recurrence","dynamical systems"],like_count:24,comment_count:7,review_count:2,created_at:"2026-03-14T10:30:00Z",comments:[{id:1,author:_users[3],comment_type:"encouragement",body:"Solid foundational work. Clean methodology.",like_count:5,created_at:"2026-03-14T14:00:00Z"}]},
-{id:2,blind_id:"D1A5B8",title:"Why Does My Ball Always Stop? A Young Person's Investigation of Friction",abstract:"I rolled a tennis ball down ramps 500 times and found an exponential decay pattern in stopping distance.",status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS[5],author:_users[2],tags:["friction","energy","experimental"],like_count:89,comment_count:31,review_count:1,created_at:"2026-03-15T16:45:00Z",comments:[{id:2,author:_users[3],comment_type:"encouragement",body:"500 trials! Have you considered varying the ball mass?",like_count:12,created_at:"2026-03-15T18:00:00Z"},{id:3,author:_users[0],comment_type:"question",body:"Could you share the R-squared values?",like_count:8,created_at:"2026-03-15T19:30:00Z"}]},
-{id:3,blind_id:"C8E2F6",title:"Night Sky Periodicity: 30 Years of Photometric Observations",abstract:"Three decades of backyard measurements reveal an 11.2-year modulation correlating with solar cycles.",status:"in_discovery",status_label:"Nearing Publication",status_color:"#4ade80",category:CATS[5],author:_users[3],tags:["photometry","citizen science"],like_count:67,comment_count:21,review_count:5,created_at:"2026-03-10T14:00:00Z",comments:[]},
-];
-let _published=[{id:101,blind_id:"P1X9Z3",title:"Empirical Power-Law Scaling in Backyard Pendulum Networks",abstract:"47 coupled pendulums demonstrate emergent power-law correlations.",status:"published",status_label:"Published",status_color:"#4ade80",category:CATS[3],author:_users[3],tags:["pendulum","power law"],like_count:142,comment_count:45,review_count:6,created_at:"2026-02-20",published_at:"2026-03-05",comments:[]}];
-let _notifs=[{id:1,title:"Field Observer commented on your paper",body:"500 trials!",is_read:false,created_at:"2026-03-15T18:00:00Z",actor:_users[3]},{id:2,title:"3 people liked your paper",is_read:false,created_at:"2026-03-15T20:00:00Z"}];
+const _users=[_usr];
+let _papers=[];
+let _published=[];
+let _notifs=[];
 let _liked=new Set(),_saved=new Set(),_fol=new Set();
 const tAgo = (d) => { const m=Math.floor((Date.now()-new Date(d))/6e4); return m<60?m+"m":m<1440?Math.floor(m/60)+"h":Math.floor(m/1440)+"d"; };
 const fDate = (d) => new Date(d).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
@@ -195,11 +191,12 @@ function Profile({user,onBack,onOpen}) {
 }
 
 /* ── NOTIFICATIONS ──────────────────────────────────────── */
-function Notifs({onBack}) {
+function Notifs({onBack,items}) {
+  const list = items || [];
   return <div style={{maxWidth:580,margin:"0 auto"}}>
     <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
     <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 14px"}}>Notifications</h2>
-    {_notifs.map((n) => <div key={n.id} style={{padding:"12px 16px",borderRadius:12,background:n.is_read?"rgba(255,255,255,0.02)":"rgba(94,168,255,0.06)",border:"1px solid "+(n.is_read?"rgba(255,255,255,0.05)":"rgba(94,168,255,0.12)"),marginBottom:8}}>
+    {list.map((n) => <div key={n.id} style={{padding:"12px 16px",borderRadius:12,background:n.is_read?"rgba(255,255,255,0.02)":"rgba(94,168,255,0.06)",border:"1px solid "+(n.is_read?"rgba(255,255,255,0.05)":"rgba(94,168,255,0.12)"),marginBottom:8}}>
       <div style={{fontSize:13,fontWeight:600}}>{n.title}</div>
       {n.body && <div style={{fontSize:12,color:"#6b7db3",marginTop:2}}>{n.body}</div>}
     </div>)}
@@ -942,7 +939,7 @@ function App() {
   return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"}}>
 
     {/* HEADER */}
-    <header style={{position:"sticky",top:0,zIndex:50,background:"rgba(8,12,24,0.92)",backdropFilter:"blur(16px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+    <header style={{position:"sticky",top:0,zIndex:50,background:"rgba(8,12,24,0.92)",backdropFilter:"blur(16px)",borderBottom:"1px solid rgba(255,255,255,0.06)",paddingTop:"env(safe-area-inset-top)"}}>
       <div style={{maxWidth:680,margin:"0 auto",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div onClick={() => {sV("feed");sNs([]);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:28,height:28,borderRadius:7,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800}}>&#x29C7;</div>
@@ -989,7 +986,7 @@ function App() {
       {v==="paper" && sel && <div style={{animation:"fadeIn .2s"}}><Detail paper={sel} onBack={pop} onProfile={(u) => push("profile",u)}/></div>}
       {v==="profile" && sel && <div style={{animation:"fadeIn .2s"}}><Profile user={sel} onBack={pop} onOpen={(p) => push("paper",p)}/></div>}
       {v==="submit" && <div style={{animation:"fadeIn .2s"}}><Submit onBack={pop}/></div>}
-      {v==="notifs" && <div style={{animation:"fadeIn .2s"}}><Notifs onBack={pop}/></div>}
+      {v==="notifs" && <div style={{animation:"fadeIn .2s"}}><Notifs onBack={pop} items={notifs}/></div>}
       {v==="tools" && <div style={{animation:"fadeIn .2s"}}><Tools onBack={pop}/></div>}
     </main>
 
