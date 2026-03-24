@@ -1,747 +1,732 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#080c18">
-    <meta name="description" content="The Journal -- A free, independent physics journal. Curiosity is the only credential. No degree required.">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <title>The Journal -- Independent Physics</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #080c18; color: #edf1ff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
-        #root { min-height: 100vh; min-height: 100dvh; }
-        #splash { position: fixed; inset: 0; background: #080c18; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.3s; }
-        #splash.hide { opacity: 0; pointer-events: none; }
-        #splash .diamond { width: 48px; height: 48px; background: linear-gradient(135deg, #5ea8ff, #3d70b8); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite; }
-        #splash h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-        #splash p { font-size: 13px; color: #5a6a94; margin-top: 4px; }
-        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#080c18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="The Journal">
+  <meta name="description" content="The Journal — Independent Physics">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <title>The Journal — Independent Physics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#080c18;color:#edf1ff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased}
+    #root{min-height:100vh;min-height:100dvh}
+    #splash{position:fixed;inset:0;background:#080c18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+    #splash.hide{opacity:0;pointer-events:none}
+    #splash .d{width:52px;height:52px;background:linear-gradient(135deg,#5ea8ff,#3d70b8);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px;animation:pulse 2s ease-in-out infinite}
+    #splash h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+    #splash p{font-size:13px;color:#5a6a94;margin-top:4px}
+    #splash .loading{margin-top:20px;font-size:12px;color:#3a4a6e}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    ::placeholder{color:#3a4a6e}
+    textarea:focus,input:focus,select:focus{outline:none;border-color:rgba(94,168,255,0.4)!important}
+    ::-webkit-scrollbar{width:5px}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+  </style>
 </head>
 <body>
-    <div id="splash">
-        <div class="diamond">&#x29C7;</div>
-        <h1>The Journal</h1>
-        <p>Independent Physics</p>
-    </div>
-    <div id="root"></div>
+  <div id="splash">
+    <div class="d">&#x29C7;</div>
+    <h1>The Journal</h1>
+    <p>Independent Physics</p>
+    <div class="loading">Loading app...</div>
+  </div>
+  <div id="root"></div>
 
-    <!-- React via CDN -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
 
-    <!-- App -->
-    <script type="text/babel" data-type="module">
-/* ==========================================================
-   THE JOURNAL -- Independent Physics Platform
-   (c) OCM Research Labs. All Rights Reserved.
-   ========================================================== */
+  <script type="text/babel">
+    const {useState,useEffect} = React;
 
-const { useState, useEffect, useRef, useCallback } = React;
+    const CATS = [
+      {id:1,slug:"foundations",name:"Foundations of Physics",emoji:"🌌"},
+      {id:2,slug:"math-physics",name:"Mathematical Physics",emoji:"📐"},
+      {id:3,slug:"nonlinear",name:"Nonlinear Dynamics",emoji:"🌀"},
+      {id:4,slug:"stat-mech",name:"Statistical Mechanics",emoji:"⚛️"},
+      {id:5,slug:"complex",name:"Complex Systems",emoji:"🕸️"},
+      {id:6,slug:"experimental",name:"Experimental & Observational",emoji:"🔬"}
+    ];
 
-/* -- HELPERS ---------------------------------------------- */
-const API = '';
-const CATEGORIES = ["Theoretical Physics","Experimental Physics","Mathematical Physics","Astrophysics & Cosmology","Quantum Mechanics","Condensed Matter","Particle Physics","Fluid Dynamics","Thermodynamics","Optics & Photonics","Nuclear Physics","Biophysics","Computational Physics","Plasma Physics","General Relativity","Other"];
-
-function xhr(method, url, body, cb) {
-  const x = new XMLHttpRequest();
-  x.open(method, API + url, true);
-  x.withCredentials = true;
-  if (body && typeof body === 'object' && !(body instanceof FormData)) {
-    x.setRequestHeader('Content-Type', 'application/json');
-    body = JSON.stringify(body);
-  }
-  x.onload = function() {
-    try { cb(null, JSON.parse(x.responseText), x.status); }
-    catch(e) { cb(null, x.responseText, x.status); }
-  };
-  x.onerror = function() { cb(new Error('Network error')); };
-  x.send(body || null);
-}
-
-function timeAgo(d) {
-  const s = Math.floor((Date.now() - new Date(d)) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return Math.floor(s/60) + 'm ago';
-  if (s < 86400) return Math.floor(s/3600) + 'h ago';
-  if (s < 604800) return Math.floor(s/86400) + 'd ago';
-  return new Date(d).toLocaleDateString();
-}
-
-/* -- SVG ICON HELPER -------------------------------------- */
-function HIcon({d, s=20, stroke="#currentColor", fill="none", sw=1.8}) {
-  return <svg width={s} height={s} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
-}
-
-/* -- AUTH SCREEN ------------------------------------------ */
-function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const submit = () => {
-    setError(''); setLoading(true);
-    if (mode === 'login') {
-      xhr('POST', '/api/auth/login', { email, password }, (err, res, status) => {
-        setLoading(false);
-        if (status === 200 && res.user) onAuth(res.user);
-        else setError(res.error || 'Login failed');
-      });
-    } else {
-      xhr('POST', '/api/auth/register', { email, password, display_name: displayName || email.split('@')[0] }, (err, res, status) => {
-        setLoading(false);
-        if (status === 201 && res.user) onAuth(res.user);
-        else setError(res.error || 'Registration failed');
-      });
-    }
-  };
-
-  return <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px",background:"#080c18"}}>
-    <div style={{width:52,height:52,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",borderRadius:13,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",marginBottom:20}}>&#x29C7;</div>
-    <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>The Journal</h1>
-    <p style={{fontSize:13,color:"#5a6a94",marginBottom:28}}>Independent Physics</p>
-
-    <div style={{display:"flex",gap:0,marginBottom:20,background:"#111833",borderRadius:10,padding:3}}>
-      <button onClick={()=>setMode('login')} style={{padding:"8px 20px",borderRadius:8,border:"none",background:mode==='login'?"#1e2d54":"transparent",color:mode==='login'?"#5ea8ff":"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Sign In</button>
-      <button onClick={()=>setMode('register')} style={{padding:"8px 20px",borderRadius:8,border:"none",background:mode==='register'?"#1e2d54":"transparent",color:mode==='register'?"#5ea8ff":"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Create Account</button>
-    </div>
-
-    <div style={{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:10}}>
-      {mode === 'register' && <input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Display Name" style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:14,outline:"none"}} />}
-      <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email" style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:14,outline:"none"}} />
-      <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" type="password" onKeyDown={e=>e.key==='Enter'&&submit()} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:14,outline:"none"}} />
-      {error && <p style={{color:"#ef4444",fontSize:12,textAlign:"center"}}>{error}</p>}
-      <button onClick={submit} disabled={loading} style={{padding:"12px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.6:1}}>{loading ? '...' : mode==='login' ? 'Sign In' : 'Create Account'}</button>
-    </div>
-
-    <button onClick={()=>onAuth(null)} style={{marginTop:20,background:"none",border:"none",color:"#5a6a94",fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Continue as Guest</button>
-  </div>;
-}
-
-/* -- PAPER CARD ------------------------------------------- */
-function PaperCard({ paper, onUser, onDetail, useApi, usr }) {
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-  const [commentOpen, setCommentOpen] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState(paper.comments || []);
-  const [likes, setLikes] = useState(paper.likes || 0);
-
-  const toggleLike = () => {
-    if (!useApi) return;
-    xhr('POST', '/api/submissions/' + paper.id + '/like', {}, (err, res) => {
-      if (res && typeof res.likes === 'number') { setLikes(res.likes); setLiked(!liked); }
-    });
-  };
-
-  const addComment = () => {
-    if (!commentText.trim() || !useApi) return;
-    xhr('POST', '/api/submissions/' + paper.id + '/comment', { content: commentText }, (err, res) => {
-      if (res && res.comment) { setComments([...comments, res.comment]); setCommentText(''); }
-    });
-  };
-
-  const statusColors = { published: '#22c55e', under_review: '#f59e0b', desk_review: '#5ea8ff', declined: '#ef4444', returned: '#f97316' };
-  const statusColor = statusColors[paper.status] || '#5a6a94';
-
-  return <div style={{background:"#0d1529",borderRadius:14,padding:16,marginBottom:12,border:"1px solid #1a2744"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-      <div style={{flex:1}}>
-        <button onClick={()=>onDetail&&onDetail(paper)} style={{background:"none",border:"none",color:"#edf1ff",fontSize:15,fontWeight:700,cursor:"pointer",textAlign:"left",padding:0,lineHeight:1.3}}>{paper.title}</button>
-        <div style={{display:"flex",gap:6,alignItems:"center",marginTop:4}}>
-          <button onClick={()=>onUser&&onUser(paper.author||paper.user)} style={{background:"none",border:"none",color:"#5ea8ff",fontSize:12,cursor:"pointer",padding:0}}>{paper.author_name || paper.display_name || 'Anonymous'}</button>
-          <span style={{color:"#3a4a6e",fontSize:11}}>{timeAgo(paper.created_at || paper.submitted_at)}</span>
-        </div>
-      </div>
-      <span style={{fontSize:10,fontWeight:600,color:statusColor,background:statusColor+'18',padding:"3px 8px",borderRadius:6,whiteSpace:"nowrap"}}>{(paper.status||'submitted').replace('_',' ')}</span>
-    </div>
-
-    {paper.abstract && <p style={{fontSize:13,color:"#8a9cc2",lineHeight:1.5,marginBottom:10}}>{paper.abstract.slice(0,200)}{paper.abstract.length>200?'...':''}</p>}
-
-    {paper.category && <span style={{fontSize:10,color:"#5a6a94",background:"#111833",padding:"3px 8px",borderRadius:5,marginBottom:10,display:"inline-block"}}>{paper.category}</span>}
-
-    <div style={{display:"flex",gap:16,marginTop:10,borderTop:"1px solid #1a2744",paddingTop:10}}>
-      <button onClick={toggleLike} style={{background:"none",border:"none",color:liked?"#ef4444":"#5a6a94",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
-        <HIcon d={liked?"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z":"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"} s={14} /> {likes}
-      </button>
-      <button onClick={()=>setCommentOpen(!commentOpen)} style={{background:"none",border:"none",color:"#5a6a94",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
-        <HIcon d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" s={14} /> {comments.length}
-      </button>
-      <button onClick={()=>setBookmarked(!bookmarked)} style={{background:"none",border:"none",color:bookmarked?"#f59e0b":"#5a6a94",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
-        <HIcon d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" s={14} />
-      </button>
-    </div>
-
-    {commentOpen && <div style={{marginTop:10}}>
-      {comments.map((c,i) => <div key={i} style={{padding:"8px 0",borderBottom:"1px solid #111833",fontSize:12}}>
-        <span style={{color:"#5ea8ff",fontWeight:600}}>{c.author_name || 'User'}</span>
-        <span style={{color:"#3a4a6e",marginLeft:6}}>{timeAgo(c.created_at)}</span>
-        <p style={{color:"#8a9cc2",marginTop:2}}>{c.content}</p>
-      </div>)}
-      {useApi && <div style={{display:"flex",gap:8,marginTop:8}}>
-        <input value={commentText} onChange={e=>setCommentText(e.target.value)} placeholder="Add a comment..." onKeyDown={e=>e.key==='Enter'&&addComment()} style={{flex:1,padding:"8px 12px",borderRadius:8,border:"1px solid #1e2d54",background:"#080c18",color:"#edf1ff",fontSize:12,outline:"none"}} />
-        <button onClick={addComment} style={{padding:"8px 14px",borderRadius:8,border:"none",background:"#5ea8ff",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>Post</button>
-      </div>}
-    </div>}
-  </div>;
-}
-
-/* -- FEED SCREEN ------------------------------------------ */
-function FeedScreen({ tab, useApi, usr, push }) {
-  const [papers, setPapers] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const endpoint = tab === 'published' ? '/api/feed/published' : '/api/feed/discovery';
-    xhr('GET', endpoint, null, (err, res) => {
-      setLoading(false);
-      if (Array.isArray(res)) setPapers(res);
-      else if (res && Array.isArray(res.papers)) setPapers(res.papers);
-      else setPapers([]);
-    });
-  }, [tab]);
-
-  return <div>
-    <div style={{display:"flex",gap:0,background:"#111833",borderRadius:10,padding:3,marginBottom:16}}>
-      <button onClick={()=>push('discover')} style={{flex:1,padding:"8px",borderRadius:8,border:"none",background:tab==='discover'?"#1e2d54":"transparent",color:tab==='discover'?"#5ea8ff":"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Discovery</button>
-      <button onClick={()=>push('published')} style={{flex:1,padding:"8px",borderRadius:8,border:"none",background:tab==='published'?"#1e2d54":"transparent",color:tab==='published'?"#5ea8ff":"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Published</button>
-    </div>
-    {loading ? <p style={{textAlign:"center",color:"#5a6a94",padding:40}}>Loading...</p> :
-     papers.length === 0 ? <div style={{textAlign:"center",padding:40,color:"#5a6a94"}}>
-       <p style={{fontSize:14}}>No papers yet</p>
-       <p style={{fontSize:12,marginTop:4}}>Be the first to submit research</p>
-     </div> :
-     papers.map(p => <PaperCard key={p.id} paper={p} useApi={useApi} usr={usr} onUser={u=>push('profile',u)} />)
-    }
-  </div>;
-}
-
-/* -- SUBMIT SCREEN ---------------------------------------- */
-function SubmitScreen({ useApi, onResult }) {
-  const [title, setTitle] = useState('');
-  const [abstract, setAbstract] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [file, setFile] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState(null);
-
-  const submit = () => {
-    if (!title.trim() || !abstract.trim()) return;
-    setSubmitting(true);
-    const fd = new FormData();
-    fd.append('title', title);
-    fd.append('abstract', abstract);
-    fd.append('category', category);
-    if (file) fd.append('file', file);
-
-    const x = new XMLHttpRequest();
-    x.open('POST', API + '/api/submissions', true);
-    x.withCredentials = true;
-    x.onload = function() {
-      setSubmitting(false);
-      try {
-        const res = JSON.parse(x.responseText);
-        setResult(res);
-      } catch(e) { setResult({ error: 'Submission failed' }); }
+    let _usr = {
+      id:1,
+      display_name:"Guest",
+      initials:"GU",
+      bio:"",
+      reputation_score:0,
+      paper_count:0,
+      review_count:0,
+      follower_count:0,
+      avatar_color:"#5ea8ff",
+      joined:null
     };
-    x.onerror = function() { setSubmitting(false); setResult({ error: 'Network error' }); };
-    x.send(fd);
-  };
 
-  if (result) return <div style={{padding:20,textAlign:"center"}}>
-    {result.error ? <p style={{color:"#ef4444"}}>{result.error}</p> :
-    <div>
-      <div style={{width:48,height:48,background:"#22c55e22",borderRadius:24,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}>
-        <HIcon d="M20 6L9 17l-5-5" s={24} stroke="#22c55e" />
-      </div>
-      <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Submitted!</h3>
-      <p style={{fontSize:13,color:"#5a6a94",marginBottom:8}}>Your paper is now in desk review.</p>
-      {result.desk_review && <div style={{background:"#111833",borderRadius:10,padding:12,textAlign:"left",marginTop:12}}>
-        <p style={{fontSize:12,fontWeight:600,marginBottom:8,color:"#5ea8ff"}}>Desk Review Summary</p>
-        <p style={{fontSize:12,color:"#8a9cc2",lineHeight:1.5}}>{result.desk_review.summary || 'Review complete.'}</p>
-        <p style={{fontSize:12,color:"#5a6a94",marginTop:6}}>Score: {result.desk_review.total_score || result.desk_review.score || '--'}/40</p>
-      </div>}
-      <button onClick={()=>{setResult(null);setTitle('');setAbstract('');setFile(null);}} style={{marginTop:16,padding:"10px 24px",borderRadius:8,border:"none",background:"#1e2d54",color:"#5ea8ff",fontWeight:600,fontSize:13,cursor:"pointer"}}>Submit Another</button>
-    </div>}
-  </div>;
-
-  return <div>
-    <h2 style={{fontSize:18,fontWeight:800,marginBottom:4}}>Submit Research</h2>
-    <p style={{fontSize:12,color:"#5a6a94",marginBottom:16}}>Curiosity is the only credential.</p>
-    <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Paper Title" style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:14,outline:"none"}} />
-      <select value={category} onChange={e=>setCategory(e.target.value)} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:13,outline:"none"}}>
-        {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
-      </select>
-      <textarea value={abstract} onChange={e=>setAbstract(e.target.value)} placeholder="Abstract -- describe your research, findings, and why it matters..." rows={8} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:13,outline:"none",resize:"vertical",lineHeight:1.5}} />
-      <label style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",borderRadius:10,border:"1px dashed #1e2d54",background:"#0d152980",cursor:"pointer",fontSize:13,color:"#5a6a94"}}>
-        <HIcon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" s={18} stroke="#5a6a94" />
-        {file ? file.name : 'Attach file (PDF, LaTeX, etc.)'}
-        <input type="file" style={{display:"none"}} onChange={e=>setFile(e.target.files[0])} accept=".pdf,.tex,.doc,.docx,.txt,.csv" />
-      </label>
-      <button onClick={submit} disabled={submitting || !title.trim() || !abstract.trim()} style={{padding:"14px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:(submitting||!title.trim()||!abstract.trim())?0.5:1}}>{submitting ? 'Submitting...' : 'Submit Paper'}</button>
-    </div>
-  </div>;
-}
-
-/* -- TOOLS SCREEN ----------------------------------------- */
-function ToolsScreen({ push }) {
-  const tools = [
-    { id:'desk_review', name:'AI Desk Review', desc:'8-criterion heuristic rubric evaluation', icon:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 1 1 0 4H11a2 2 0 0 1-2-2z' },
-    { id:'ocm', name:'OCM Stability Analysis', desc:'Contraction rate measurement, 3-class taxonomy', icon:'M22 12h-4l-3 9L9 3l-3 9H2' },
-    { id:'er', name:'ER Topology Mapping', desc:'Coherence graph and bridge detection', icon:'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
-    { id:'icm', name:'ICM Invariant Detection', desc:'Disruption morphology and admissibility gates', icon:'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
-    { id:'clm', name:'CLM Coherence Field Lab', desc:'Real-time simulation with custom forcing', icon:'M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z' },
-  ];
-
-  return <div>
-    <h2 style={{fontSize:18,fontWeight:800,marginBottom:4}}>Research Tools</h2>
-    <p style={{fontSize:12,color:"#5a6a94",marginBottom:16}}>All tools support file upload (CSV/PDF).</p>
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {tools.map(t => <button key={t.id} onClick={()=>push('tool',t)} style={{display:"flex",alignItems:"center",gap:12,padding:14,borderRadius:12,border:"1px solid #1a2744",background:"#0d1529",cursor:"pointer",textAlign:"left"}}>
-        <div style={{width:40,height:40,borderRadius:10,background:"#111833",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <HIcon d={t.icon} s={20} stroke="#5ea8ff" />
-        </div>
-        <div>
-          <p style={{fontSize:14,fontWeight:600,color:"#edf1ff"}}>{t.name}</p>
-          <p style={{fontSize:11,color:"#5a6a94",marginTop:2}}>{t.desc}</p>
-        </div>
-      </button>)}
-    </div>
-  </div>;
-}
-
-/* -- TOOL DETAIL SCREEN ----------------------------------- */
-function ToolDetail({ tool, useApi }) {
-  const [input, setInput] = useState('');
-  const [file, setFile] = useState(null);
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const run = () => {
-    if (!useApi) { setResult({ error: 'Sign in to use tools' }); return; }
-    setLoading(true);
-    const fd = new FormData();
-    fd.append('tool', tool.id);
-    fd.append('input', input);
-    if (file) fd.append('file', file);
-
-    const x = new XMLHttpRequest();
-    x.open('POST', API + '/api/tools/run', true);
-    x.withCredentials = true;
-    x.onload = function() {
-      setLoading(false);
-      try { setResult(JSON.parse(x.responseText)); }
-      catch(e) { setResult({ error: 'Tool execution failed' }); }
+    const tAgo = (d) => {
+      if (!d) return "";
+      const m = Math.floor((Date.now()-new Date(d))/6e4);
+      return m < 60 ? m + "m" : m < 1440 ? Math.floor(m/60) + "h" : Math.floor(m/1440) + "d";
     };
-    x.onerror = function() { setLoading(false); setResult({ error: 'Network error' }); };
-    x.send(fd);
-  };
 
-  return <div>
-    <h2 style={{fontSize:18,fontWeight:800,marginBottom:4}}>{tool.name}</h2>
-    <p style={{fontSize:12,color:"#5a6a94",marginBottom:16}}>{tool.desc}</p>
-    <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Paste data or describe your analysis..." rows={6} style={{padding:"12px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:13,outline:"none",resize:"vertical",lineHeight:1.5}} />
-      <label style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",borderRadius:10,border:"1px dashed #1e2d54",background:"#0d152980",cursor:"pointer",fontSize:13,color:"#5a6a94"}}>
-        <HIcon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" s={18} stroke="#5a6a94" />
-        {file ? file.name : 'Upload CSV or data file'}
-        <input type="file" style={{display:"none"}} onChange={e=>setFile(e.target.files[0])} accept=".csv,.txt,.json,.pdf,.tex" />
-      </label>
-      <button onClick={run} disabled={loading} style={{padding:"14px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.5:1}}>{loading ? 'Running...' : 'Run Analysis'}</button>
-    </div>
-    {result && <div style={{marginTop:16,padding:14,borderRadius:12,background:"#111833",border:"1px solid #1a2744"}}>
-      {result.error ? <p style={{color:"#ef4444",fontSize:13}}>{result.error}</p> :
-      <div>
-        {result.summary && <p style={{fontSize:13,color:"#edf1ff",lineHeight:1.5,marginBottom:8}}>{result.summary}</p>}
-        {result.classification && <span style={{fontSize:11,fontWeight:600,color:"#5ea8ff",background:"#5ea8ff18",padding:"3px 10px",borderRadius:6}}>{result.classification}</span>}
-        {result.details && <pre style={{fontSize:11,color:"#8a9cc2",marginTop:10,whiteSpace:"pre-wrap",lineHeight:1.4}}>{typeof result.details === 'string' ? result.details : JSON.stringify(result.details, null, 2)}</pre>}
-      </div>}
-    </div>}
-  </div>;
-}
+    const fDate = (d) => {
+      if (!d) return "";
+      return new Date(d).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+    };
 
-/* -- NOTIFICATIONS SCREEN --------------------------------- */
-function NotificationsScreen({ useApi }) {
-  const [notifs, setNotifs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!useApi) { setLoading(false); return; }
-    xhr('GET', '/api/notifications', null, (err, res) => {
-      setLoading(false);
-      if (Array.isArray(res)) setNotifs(res);
-      else if (res && Array.isArray(res.notifications)) setNotifs(res.notifications);
-    });
-  }, []);
-
-  return <div>
-    <h2 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Notifications</h2>
-    {loading ? <p style={{color:"#5a6a94",textAlign:"center",padding:40}}>Loading...</p> :
-     notifs.length === 0 ? <p style={{color:"#5a6a94",textAlign:"center",padding:40,fontSize:13}}>No notifications yet</p> :
-     notifs.map((n,i) => <div key={i} style={{padding:"12px 0",borderBottom:"1px solid #111833",fontSize:13,color:"#8a9cc2"}}>
-       <p>{n.message || n.content}</p>
-       <span style={{fontSize:11,color:"#3a4a6e"}}>{timeAgo(n.created_at)}</span>
-     </div>)}
-  </div>;
-}
-
-/* -- PROFILE SCREEN --------------------------------------- */
-function ProfileScreen({ user, isSelf, useApi, onLogout }) {
-  const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(user?.display_name || '');
-  const [bio, setBio] = useState(user?.bio || '');
-  const [avatarColor, setAvatarColor] = useState(user?.avatar_color || '#5ea8ff');
-  const [saving, setSaving] = useState(false);
-  const [followed, setFollowed] = useState(false);
-
-  const AVATAR_COLORS = ['#5ea8ff','#22c55e','#f59e0b','#ef4444','#a855f7','#ec4899','#14b8a6','#f97316'];
-
-  const saveProfile = () => {
-    setSaving(true);
-    xhr('POST', '/api/auth/profile', { display_name: displayName, bio, avatar_color: avatarColor }, (err, res, status) => {
-      setSaving(false);
-      if (status === 200) setEditing(false);
-    });
-  };
-
-  const toggleFollow = () => {
-    if (!useApi || !user?.id) return;
-    xhr('POST', '/api/users/' + user.id + '/follow', {}, (err, res) => {
-      if (res) setFollowed(!followed);
-    });
-  };
-
-  const initials = (user?.display_name || user?.email || '?').slice(0,2).toUpperCase();
-
-  return <div style={{display:"flex",flexDirection:"column",alignItems:"center",paddingTop:20}}>
-    <div style={{width:64,height:64,borderRadius:32,background:avatarColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:"#fff",marginBottom:12}}>{initials}</div>
-
-    {editing ? <div style={{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
-      <input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Display Name" style={{padding:"10px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:14,outline:"none"}} />
-      <textarea value={bio} onChange={e=>setBio(e.target.value)} placeholder="Bio -- tell the community about yourself..." rows={3} style={{padding:"10px 14px",borderRadius:10,border:"1px solid #1e2d54",background:"#0d1529",color:"#edf1ff",fontSize:13,outline:"none",resize:"vertical",lineHeight:1.5}} />
-      <div>
-        <p style={{fontSize:11,color:"#5a6a94",marginBottom:6}}>Avatar Color</p>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {AVATAR_COLORS.map(c => <button key={c} onClick={()=>setAvatarColor(c)} style={{width:32,height:32,borderRadius:16,background:c,border:avatarColor===c?"3px solid #fff":"3px solid transparent",cursor:"pointer"}} />)}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:8,marginTop:4}}>
-        <button onClick={saveProfile} disabled={saving} style={{flex:1,padding:"10px",borderRadius:8,border:"none",background:"#5ea8ff",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer"}}>{saving ? 'Saving...' : 'Save'}</button>
-        <button onClick={()=>setEditing(false)} style={{flex:1,padding:"10px",borderRadius:8,border:"1px solid #1e2d54",background:"transparent",color:"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
-      </div>
-    </div> : <div style={{textAlign:"center"}}>
-      <h2 style={{fontSize:18,fontWeight:800}}>{user?.display_name || user?.email || 'Guest'}</h2>
-      {user?.bio && <p style={{fontSize:13,color:"#8a9cc2",marginTop:4,maxWidth:280,lineHeight:1.4}}>{user.bio}</p>}
-      <p style={{fontSize:11,color:"#5a6a94",marginTop:4}}>{user?.email}</p>
-      <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:12}}>
-        {isSelf && useApi && <button onClick={()=>setEditing(true)} style={{padding:"8px 20px",borderRadius:8,border:"1px solid #1e2d54",background:"transparent",color:"#5ea8ff",fontWeight:600,fontSize:12,cursor:"pointer"}}>Edit Profile</button>}
-        {!isSelf && useApi && <button onClick={toggleFollow} style={{padding:"8px 20px",borderRadius:8,border:"none",background:followed?"#1e2d54":"#5ea8ff",color:followed?"#5a6a94":"#fff",fontWeight:600,fontSize:12,cursor:"pointer"}}>{followed ? 'Following' : 'Follow'}</button>}
-      </div>
-    </div>}
-
-    {isSelf && useApi && <button onClick={onLogout} style={{marginTop:32,padding:"10px 24px",borderRadius:8,border:"1px solid #2a1a1a",background:"#1a0d0d",color:"#ef4444",fontWeight:600,fontSize:13,cursor:"pointer"}}>Sign Out</button>}
-  </div>;
-}
-
-/* -- ADMIN DASHBOARD -------------------------------------- */
-function AdminDash({ usr }) {
-  const [tab, setTab] = useState('papers');
-  const [papers, setPapers] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [actionMsg, setActionMsg] = useState('');
-
-  const load = () => {
-    setLoading(true);
-    if (tab === 'papers') {
-      xhr('GET', '/api/admin/submissions', null, (err, res) => {
-        setLoading(false);
-        if (Array.isArray(res)) setPapers(res);
-        else if (res && Array.isArray(res.submissions)) setPapers(res.submissions);
-        else setPapers([]);
-      });
-    } else {
-      xhr('GET', '/api/admin/users', null, (err, res) => {
-        setLoading(false);
-        if (Array.isArray(res)) setUsers(res);
-        else if (res && Array.isArray(res.users)) setUsers(res.users);
-        else setUsers([]);
-      });
-    }
-  };
-
-  useEffect(() => { load(); }, [tab]);
-
-  const flash = (msg) => { setActionMsg(msg); setTimeout(()=>setActionMsg(''), 2500); };
-
-  const changeStatus = (paperId, status) => {
-    xhr('POST', '/api/admin/submissions/' + paperId + '/status', { status }, (err, res, s) => {
-      if (s === 200) { flash('Status updated'); load(); }
-      else flash('Error updating status');
-    });
-  };
-
-  const deletePaper = (paperId) => {
-    if (!confirm('Delete this submission permanently?')) return;
-    xhr('DELETE', '/api/admin/submissions/' + paperId, null, (err, res, s) => {
-      if (s === 200) { flash('Deleted'); load(); }
-      else flash('Error deleting');
-    });
-  };
-
-  const changeRole = (userId, role) => {
-    xhr('POST', '/api/admin/users/' + userId + '/role', { role }, (err, res, s) => {
-      if (s === 200) { flash('Role updated'); load(); }
-      else flash('Error updating role');
-    });
-  };
-
-  const toggleBan = (userId, banned) => {
-    xhr('POST', '/api/admin/users/' + userId + (banned ? '/unban' : '/ban'), {}, (err, res, s) => {
-      if (s === 200) { flash(banned ? 'Unbanned' : 'Banned'); load(); }
-      else flash('Error');
-    });
-  };
-
-  const deleteUser = (userId) => {
-    if (!confirm('Delete this user permanently?')) return;
-    xhr('DELETE', '/api/admin/users/' + userId, null, (err, res, s) => {
-      if (s === 200) { flash('User deleted'); load(); }
-      else flash('Error deleting user');
-    });
-  };
-
-  const resetDB = () => {
-    if (!confirm('This will delete ALL non-admin users and ALL submissions. Are you sure?')) return;
-    if (!confirm('Last chance -- this cannot be undone.')) return;
-    xhr('POST', '/api/admin/reset-db', {}, (err, res, s) => {
-      if (s === 200) { flash('Database reset'); load(); }
-      else flash('Error resetting database');
-    });
-  };
-
-  const statusColors = { published:'#22c55e', under_review:'#f59e0b', desk_review:'#5ea8ff', declined:'#ef4444', returned:'#f97316', submitted:'#8a9cc2' };
-  const btnS = (bg) => ({padding:"4px 10px",borderRadius:6,border:"none",background:bg||"#1e2d54",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"});
-
-  return <div>
-    <h2 style={{fontSize:18,fontWeight:800,marginBottom:4}}>Admin Dashboard</h2>
-    <p style={{fontSize:12,color:"#5a6a94",marginBottom:12}}>Manage submissions and users</p>
-
-    {actionMsg && <div style={{padding:"8px 12px",borderRadius:8,background:"#22c55e22",color:"#22c55e",fontSize:12,fontWeight:600,marginBottom:12,textAlign:"center"}}>{actionMsg}</div>}
-
-    <div style={{display:"flex",gap:0,background:"#111833",borderRadius:10,padding:3,marginBottom:16}}>
-      <button onClick={()=>setTab('papers')} style={{flex:1,padding:"8px",borderRadius:8,border:"none",background:tab==='papers'?"#1e2d54":"transparent",color:tab==='papers'?"#5ea8ff":"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Papers ({papers.length})</button>
-      <button onClick={()=>setTab('users')} style={{flex:1,padding:"8px",borderRadius:8,border:"none",background:tab==='users'?"#1e2d54":"transparent",color:tab==='users'?"#5ea8ff":"#5a6a94",fontWeight:600,fontSize:13,cursor:"pointer"}}>Users ({users.length})</button>
-    </div>
-
-    {loading ? <p style={{textAlign:"center",color:"#5a6a94",padding:40}}>Loading...</p> :
-    tab === 'papers' ? <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {papers.length === 0 ? <p style={{color:"#5a6a94",textAlign:"center",padding:20,fontSize:13}}>No submissions</p> :
-      papers.map(p => <div key={p.id} style={{background:"#0d1529",borderRadius:12,padding:14,border:"1px solid #1a2744"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-          <div style={{flex:1}}>
-            <p style={{fontSize:14,fontWeight:700,color:"#edf1ff"}}>{p.title}</p>
-            <p style={{fontSize:11,color:"#5a6a94",marginTop:2}}>{p.author_name || p.display_name || 'Unknown'} &middot; {timeAgo(p.created_at || p.submitted_at)}</p>
-          </div>
-          <span style={{fontSize:10,fontWeight:600,color:statusColors[p.status]||'#5a6a94',background:(statusColors[p.status]||'#5a6a94')+'18',padding:"3px 8px",borderRadius:6}}>{(p.status||'submitted').replace('_',' ')}</span>
-        </div>
-        {p.abstract && <p style={{fontSize:11,color:"#8a9cc2",lineHeight:1.4,marginBottom:8}}>{p.abstract.slice(0,150)}...</p>}
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <button onClick={()=>changeStatus(p.id,'published')} style={btnS('#22c55e')}>Publish</button>
-          <button onClick={()=>changeStatus(p.id,'under_review')} style={btnS('#f59e0b')}>To Review</button>
-          <button onClick={()=>changeStatus(p.id,'returned')} style={btnS('#f97316')}>Return</button>
-          <button onClick={()=>changeStatus(p.id,'declined')} style={btnS('#ef4444')}>Decline</button>
-          <button onClick={()=>deletePaper(p.id)} style={btnS('#7f1d1d')}>Delete</button>
-        </div>
-      </div>)}
-    </div> :
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {users.length === 0 ? <p style={{color:"#5a6a94",textAlign:"center",padding:20,fontSize:13}}>No users</p> :
-      users.map(u => <div key={u.id} style={{background:"#0d1529",borderRadius:12,padding:14,border:"1px solid #1a2744",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <p style={{fontSize:14,fontWeight:600,color:"#edf1ff"}}>{u.display_name || u.email}</p>
-          <p style={{fontSize:11,color:"#5a6a94"}}>{u.email} &middot; {u.role || 'member'}{u.banned ? ' (BANNED)' : ''}</p>
-        </div>
-        <div style={{display:"flex",gap:4,flexShrink:0}}>
-          <button onClick={()=>changeRole(u.id, u.role==='admin'?'member':'admin')} style={btnS(u.role==='admin'?'#a855f7':'#1e2d54')}>{u.role==='admin'?'Demote':'Promote'}</button>
-          <button onClick={()=>toggleBan(u.id, u.banned)} style={btnS(u.banned?'#22c55e':'#f59e0b')}>{u.banned?'Unban':'Ban'}</button>
-          <button onClick={()=>deleteUser(u.id)} style={btnS('#7f1d1d')}>Del</button>
-        </div>
-      </div>)}
-      <button onClick={resetDB} style={{marginTop:16,padding:"10px",borderRadius:8,border:"1px solid #7f1d1d",background:"#1a0d0d",color:"#ef4444",fontWeight:600,fontSize:12,cursor:"pointer",textAlign:"center"}}>Reset Database (Nuclear Option)</button>
-    </div>}
-  </div>;
-}
-
-/* ==========================================================
-   MAIN APP
-   ========================================================== */
-function App() {
-  const [screen, setScreen] = useState('auth');
-  const [screenData, setScreenData] = useState(null);
-  const [_usr, setUsr] = useState(null);
-  const [useApi, setUseApi] = useState(false);
-  const [notifCount, setNotifCount] = useState(0);
-
-  const push = (s, data) => { setScreen(s); setScreenData(data || null); };
-
-  const onAuth = (user) => {
-    if (user) {
-      setUsr(user);
-      setUseApi(true);
-      push('discover');
-    } else {
-      setUsr({ display_name: 'Guest', email: 'guest', role: 'guest' });
-      setUseApi(false);
-      push('discover');
-    }
-  };
-
-  const onLogout = () => {
-    xhr('POST', '/api/auth/logout', {}, () => {});
-    setUsr(null);
-    setUseApi(false);
-    push('auth');
-  };
-
-  // Check session on mount
-  useEffect(() => {
-    xhr('GET', '/api/auth/me', null, (err, res, status) => {
-      if (status === 200 && res && res.user) {
-        setUsr(res.user);
-        setUseApi(true);
-        push('discover');
+    const API = {
+      get(url) {
+        return new Promise(function(resolve){
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", url, true);
+          xhr.withCredentials = true;
+          xhr.onload = function(){
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch(e){ resolve({}); }
+          };
+          xhr.onerror = function(){ resolve({}); };
+          xhr.send();
+        });
+      },
+      post(url, body) {
+        return new Promise(function(resolve){
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", url, true);
+          xhr.withCredentials = true;
+          xhr.setRequestHeader("Content-Type", "application/json");
+          xhr.onload = function(){
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch(e){ resolve({}); }
+          };
+          xhr.onerror = function(){ resolve({}); };
+          xhr.send(JSON.stringify(body || {}));
+        });
       }
-    });
-  }, []);
+    };
 
-  // Poll notifications
-  useEffect(() => {
-    if (!useApi) return;
-    const poll = () => xhr('GET', '/api/notifications/count', null, (err, res) => {
-      if (res && typeof res.count === 'number') setNotifCount(res.count);
-    });
-    poll();
-    const iv = setInterval(poll, 30000);
-    return () => clearInterval(iv);
-  }, [useApi]);
-
-  if (screen === 'auth') return <AuthScreen onAuth={onAuth} />;
-
-  // Which view to render
-  const v = screen;
-  const isFeed = v === 'discover' || v === 'published';
-
-  let content;
-  if (isFeed) content = <FeedScreen tab={v} useApi={useApi} usr={_usr} push={push} />;
-  else if (v === 'submit') content = <SubmitScreen useApi={useApi} />;
-  else if (v === 'tools') content = <ToolsScreen push={push} />;
-  else if (v === 'tool') content = <ToolDetail tool={screenData} useApi={useApi} />;
-  else if (v === 'notifications') content = <NotificationsScreen useApi={useApi} />;
-  else if (v === 'admin') content = <AdminDash usr={_usr} />;
-  else if (v === 'profile') content = <ProfileScreen user={screenData || _usr} isSelf={!screenData || screenData.id === _usr?.id} useApi={useApi} onLogout={onLogout} />;
-  else content = <FeedScreen tab="discover" useApi={useApi} usr={_usr} push={push} />;
-
-  return <div style={{minHeight:"100vh",minHeight:"100dvh",background:"#080c18",display:"flex",flexDirection:"column"}}>
-    {/* -- HEADER -- */}
-    <header style={{
-      display:"flex",
-      justifyContent:"space-between",
-      alignItems:"center",
-      padding:"10px 16px",
-      paddingTop:"calc(10px + env(safe-area-inset-top, 0px))",
-      background:"#0a0f20",
-      borderBottom:"1px solid #111833",
-      position:"sticky",
-      top:0,
-      zIndex:100
-    }}>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <div style={{width:28,height:28,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#fff"}}>&#x29C7;</div>
-        <span style={{fontSize:15,fontWeight:800,letterSpacing:"-0.02em"}}>The Journal</span>
-      </div>
-      <div style={{display:"flex",gap:12,alignItems:"center"}}>
-        <button onClick={()=>push('notifications')} style={{background:"none",border:"none",cursor:"pointer",position:"relative"}}>
-          <HIcon d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" s={20} stroke="#5a6a94" />
-          {notifCount > 0 && <span style={{position:"absolute",top:-2,right:-4,width:16,height:16,borderRadius:8,background:"#ef4444",color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{notifCount}</span>}
-        </button>
-      </div>
-    </header>
-
-    {/* -- BACK BUTTON FOR DETAIL VIEWS -- */}
-    {(v === 'tool' || v === 'notifications' || (v === 'profile' && screenData && screenData.id !== _usr?.id)) &&
-      <button onClick={()=>push(v==='tool'?'tools':v==='notifications'?'discover':'discover')} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 16px",background:"none",border:"none",color:"#5ea8ff",fontSize:13,fontWeight:600,cursor:"pointer"}}>
-        <HIcon d="M19 12H5M12 19l-7-7 7-7" s={16} stroke="#5ea8ff" /> Back
-      </button>
+    function HIcon({d,s=17,f}) {
+      return (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d={d}/>
+        </svg>
+      );
     }
 
-    {/* -- MAIN CONTENT -- */}
-    <main style={{flex:1,padding:"12px 16px",paddingBottom:72,overflowY:"auto"}}>
-      {content}
-    </main>
+    function Av({user,size=36}) {
+      const initials = user.initials || (user.display_name || "??").split(" ").map(x=>x[0]).join("").toUpperCase().slice(0,2);
+      return (
+        <div style={{
+          width:size,height:size,borderRadius:"50%",
+          background:"linear-gradient(135deg,"+(user.avatar_color||"#5ea8ff")+","+(user.avatar_color||"#5ea8ff")+"88)",
+          display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0
+        }}>
+          {initials}
+        </div>
+      );
+    }
 
-    {/* -- BOTTOM NAV -- */}
-    <nav style={{
-      position:"fixed",
-      bottom:0,
-      left:0,
-      right:0,
-      display:"flex",
-      justifyContent:"space-around",
-      alignItems:"center",
-      padding:"6px 0",
-      paddingBottom:"calc(6px + env(safe-area-inset-bottom, 0px))",
-      background:"#0a0f20",
-      borderTop:"1px solid #111833",
-      zIndex:100
-    }}>
-      <button onClick={()=>push('discover')} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:isFeed?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-        <HIcon d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-4 0a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1" s={19} stroke={isFeed?"#5ea8ff":"#3a4a6e"} /><span>Discover</span>
-      </button>
-      <button onClick={()=>push('published')} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="published"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-        <HIcon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M18 2H6v7a6 6 0 0 0 12 0V2Z" s={19} stroke={v==="published"?"#5ea8ff":"#3a4a6e"} /><span>Published</span>
-      </button>
-      <button onClick={()=>push('submit')} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="submit"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-        <HIcon d="M12 5v14M5 12h14" s={19} stroke={v==="submit"?"#5ea8ff":"#3a4a6e"} /><span>Submit</span>
-      </button>
-      <button onClick={()=>push('tools')} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:(v==="tools"||v==="tool")?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-        <HIcon d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12" s={19} stroke={(v==="tools"||v==="tool")?"#5ea8ff":"#3a4a6e"} /><span>Tools</span>
-      </button>
-      {_usr && _usr.role === 'admin' && <button onClick={()=>push('admin')} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="admin"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-        <HIcon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" s={19} stroke={v==="admin"?"#5ea8ff":"#3a4a6e"} /><span>Admin</span>
-      </button>}
-      <button onClick={()=>push('profile',_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-        <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19} stroke={v==="profile"?"#5ea8ff":"#3a4a6e"} /><span>Profile</span>
-      </button>
-    </nav>
-  </div>;
-}
+    function Badge({label,color}) {
+      return (
+        <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:(color||"#6b7db3")+"15",color:color||"#6b7db3",border:"1px solid "+(color||"#6b7db3")+"30"}}>
+          <span style={{width:5,height:5,borderRadius:"50%",background:color||"#6b7db3"}}/>
+          {label}
+        </span>
+      );
+    }
 
-/* -- MOUNT ------------------------------------------------ */
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
-setTimeout(() => { const s = document.getElementById('splash'); if (s) s.classList.add('hide'); }, 600);
-    </script>
+    function AuthScreen({onAuth}) {
+      const [mode,sMode] = useState("login");
+      const [email,sEmail] = useState("");
+      const [name,sName] = useState("");
+      const [pw,sPw] = useState("");
+      const [err,sErr] = useState("");
+      const [loading,sLoading] = useState(false);
 
-    <script>
-    // Fallback: if Babel/React fails to load after 15s, show a message
+      const submit = () => {
+        sErr("");
+        sLoading(true);
+
+        const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+        const body = mode === "login"
+          ? { email: email.trim(), password: pw }
+          : { email: email.trim(), display_name: name.trim(), password: pw };
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        xhr.onload = function() {
+          sLoading(false);
+          let res = {};
+          try { res = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch(e) {}
+
+          if (xhr.status >= 200 && xhr.status < 300 && res.user) {
+            _usr = res.user;
+            _usr.initials = _usr.initials || (_usr.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+            onAuth(_usr, true);
+            return;
+          }
+
+          let msg = res.error || ("Error (" + xhr.status + ")");
+          if (res.detail) msg += ": " + res.detail;
+          sErr(msg);
+        };
+
+        xhr.onerror = function() {
+          sLoading(false);
+          sErr("Network error");
+        };
+
+        xhr.send(JSON.stringify(body));
+      };
+
+      return (
+        <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
+          <div style={{width:52,height:52,borderRadius:13,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",marginBottom:20}}>&#x29C7;</div>
+          <h1 style={{fontSize:24,fontWeight:800,marginBottom:4}}>The Journal</h1>
+          <p style={{fontSize:13,color:"#5ea8ff",marginBottom:24}}>Independent Physics Platform</p>
+
+          <div style={{width:"100%",maxWidth:360}}>
+            <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:16}}>
+              <button onClick={() => sMode("login")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="login"?"rgba(94,168,255,0.12)":"transparent",color:mode==="login"?"#5ea8ff":"#4a5a7e"}}>Sign In</button>
+              <button onClick={() => sMode("register")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="register"?"rgba(94,168,255,0.12)":"transparent",color:mode==="register"?"#5ea8ff":"#4a5a7e"}}>Create Account</button>
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {mode==="register" && <input value={name} onChange={(e)=>sName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>}
+              <input value={email} onChange={(e)=>sEmail(e.target.value)} placeholder="Email" type="email" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+              <input value={pw} onChange={(e)=>sPw(e.target.value)} placeholder="Password" type="password" onKeyDown={(e)=>{if(e.key==="Enter") submit();}} style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+              {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
+              <button onClick={submit} disabled={loading||!email||!pw||(mode==="register"&&!name)} style={{padding:"12px",borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
+            </div>
+
+            <button onClick={() => onAuth(_usr, false)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest</button>
+            <p style={{fontSize:11,color:"#3a4a6e",textAlign:"center",marginTop:16,lineHeight:1.5}}>No degree required. No institution needed. Just curiosity.</p>
+          </div>
+        </div>
+      );
+    }
+
+    function Card({paper,onOpen,onProfile,onLike,useApi}) {
+      const p = paper;
+      const [lk,sLk] = useState(!!p.user_liked);
+      const [sv,sSv] = useState(!!p.user_bookmarked);
+      const [lc,sLc] = useState(p.like_count || 0);
+
+      const likeClick = (e) => {
+        e.stopPropagation();
+        if (!useApi) return;
+        const prevLiked = lk;
+        sLk(!prevLiked);
+        sLc(prevLiked ? Math.max(0, lc - 1) : lc + 1);
+        onLike && onLike(p, prevLiked, (ok, likedValue) => {
+          if (!ok) {
+            sLk(prevLiked);
+            sLc(lc);
+          } else if (typeof likedValue === "boolean") {
+            sLk(likedValue);
+          }
+        });
+      };
+
+      return (
+        <div onClick={() => onOpen(p)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"16px 18px",cursor:"pointer",marginBottom:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <div onClick={(e)=>{e.stopPropagation();onProfile(p.author);}} style={{cursor:"pointer"}}><Av user={p.author || {}} size={32}/></div>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                <span onClick={(e)=>{e.stopPropagation();onProfile(p.author);}} style={{fontWeight:600,fontSize:13,cursor:"pointer"}}>{(p.author && p.author.display_name) || "Anonymous"}</span>
+                <span style={{color:"#5a6a94",fontSize:11}}>{tAgo(p.created_at)}</span>
+              </div>
+              <span style={{fontSize:11,color:"#6b7db3"}}>{p.category && p.category.emoji ? p.category.emoji : "📐"} {p.category && p.category.name ? p.category.name : "Physics"}</span>
+            </div>
+            <Badge label={p.status_label || p.status || "Submitted"} color={p.status_color || "#6b7db3"}/>
+          </div>
+
+          <h3 style={{fontSize:16,fontWeight:700,lineHeight:1.3,margin:"0 0 6px",color:"#f0f4ff"}}>{p.title}</h3>
+          <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:"0 0 10px",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.abstract}</p>
+
+          {p.tags && p.tags.length > 0 && (
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
+              {p.tags.map((t) => <span key={t} style={{padding:"1px 7px",borderRadius:6,fontSize:10,fontWeight:600,background:"rgba(141,193,255,0.08)",color:"#7da8d4"}}>{t}</span>)}
+            </div>
+          )}
+
+          <div style={{display:"flex",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:10}}>
+            <button onClick={likeClick} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:useApi?"pointer":"default",color:lk?"#ff4d6a":"#5a6a94",fontSize:12,fontWeight:600}}>
+              <HIcon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" s={15} f={lk}/> {lc}
+            </button>
+
+            <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
+              <HIcon d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" s={15}/> {p.comment_count || 0}
+            </span>
+
+            <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
+              <HIcon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2" s={15}/> {p.review_count || 0}
+            </span>
+
+            <button onClick={(e)=>{e.stopPropagation();sSv(!sv);}} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:sv?"#f0a030":"#5a6a94",fontSize:12,fontWeight:600,marginLeft:"auto"}}>
+              <HIcon d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" s={15} f={sv}/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Detail({paper,onBack,onProfile,onRefresh,useApi}) {
+      const [fullPaper,sFullPaper] = useState(paper);
+      const [c,sC] = useState("");
+      const [posting,sPosting] = useState(false);
+
+      useEffect(() => {
+        if (!paper || !paper.blind_id) return;
+        API.get("/api/submissions/" + paper.blind_id).then(function(d){
+          if (d && d.submission) sFullPaper(d.submission);
+        });
+      }, [paper && paper.blind_id]);
+
+      const p = fullPaper || paper;
+      const comments = p.comments || [];
+
+      const post = () => {
+        if (!c.trim() || !useApi || !p.blind_id) return;
+        sPosting(true);
+        API.post("/api/submissions/" + p.blind_id + "/comments", {body:c, comment_type:"note"}).then(function(d){
+          sPosting(false);
+          if (d && d.comment) {
+            sFullPaper({
+              ...p,
+              comments:[...comments,d.comment]
+            });
+            sC("");
+            onRefresh && onRefresh();
+          }
+        }).catch(function(){ sPosting(false); });
+      };
+
+      return (
+        <div style={{maxWidth:640,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+
+          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:20,marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <div onClick={() => onProfile(p.author)} style={{cursor:"pointer"}}><Av user={p.author || {}} size={40}/></div>
+              <div style={{flex:1}}>
+                <span onClick={() => onProfile(p.author)} style={{fontWeight:700,fontSize:14,cursor:"pointer"}}>{(p.author && p.author.display_name) || "Anonymous"}</span>
+                <div style={{fontSize:11,color:"#5a6a94"}}>{p.category && p.category.emoji ? p.category.emoji : "📐"} {p.category && p.category.name ? p.category.name : "Physics"} &middot; {fDate(p.created_at)}</div>
+              </div>
+              <Badge label={p.status_label || p.status || "Submitted"} color={p.status_color || "#6b7db3"}/>
+            </div>
+
+            <h1 style={{fontSize:20,fontWeight:800,lineHeight:1.3,margin:"0 0 10px"}}>{p.title}</h1>
+            <div style={{fontSize:10,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Abstract</div>
+            <p style={{fontSize:14,lineHeight:1.6,color:"#a0aed0",marginBottom:16}}>{p.abstract}</p>
+
+            {p.body_text && (
+              <>
+                <div style={{fontSize:10,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Paper</div>
+                <div style={{fontSize:13,lineHeight:1.7,color:"#c7d2f0",whiteSpace:"pre-wrap"}}>{p.body_text}</div>
+              </>
+            )}
+          </div>
+
+          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+            <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Discussion ({comments.length})</h3>
+
+            {comments.map((x) => (
+              <div key={x.id} style={{display:"flex",gap:10,marginBottom:14,paddingBottom:14,borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                <Av user={x.author || {}} size={28}/>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                    <span style={{fontWeight:600,fontSize:12}}>{(x.author && x.author.display_name) || "User"}</span>
+                    <span style={{fontSize:10,color:"#4a5a7e"}}>{tAgo(x.created_at)}</span>
+                    {x.comment_type==="encouragement" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(74,222,128,0.12)",color:"#4ade80",fontWeight:600}}>encouraging</span>}
+                    {x.comment_type==="question" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:600}}>question</span>}
+                  </div>
+                  <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:0}}>{x.body}</p>
+                </div>
+              </div>
+            ))}
+
+            {useApi && (
+              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                <Av user={_usr} size={28}/>
+                <div style={{flex:1,position:"relative"}}>
+                  <textarea value={c} onChange={(e)=>sC(e.target.value)} placeholder="Join the discussion..." onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();post();}}} style={{width:"100%",padding:"9px 40px 9px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:13,resize:"none",minHeight:38,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                  <button onClick={post} disabled={posting || !c.trim()} style={{position:"absolute",right:6,bottom:6,background:c.trim()?"#5ea8ff":"transparent",border:"none",borderRadius:6,padding:5,cursor:c.trim()?"pointer":"default",color:c.trim()?"#071120":"#3a4a6e"}}>&#9658;</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function Submit({onBack,onSubmitted,useApi}) {
+      const [t,sT]=useState("");
+      const [a,sA]=useState("");
+      const [b,sB]=useState("");
+      const [cat,sCat]=useState("");
+      const [done,sD]=useState(false);
+      const [err,sErr]=useState("");
+      const [loading,sLoading]=useState(false);
+
+      const submit = () => {
+        if (!useApi) {
+          sErr("Sign in to submit.");
+          return;
+        }
+        if (!t || !a || !b || !cat) return;
+
+        sLoading(true);
+        sErr("");
+        API.post("/api/submissions", {
+          title:t,
+          abstract:a,
+          body_text:b,
+          category_id:+cat,
+          tags:""
+        }).then(function(d){
+          sLoading(false);
+          if (d && d.submission) {
+            sD(true);
+            onSubmitted && onSubmitted();
+          } else {
+            sErr(d.error || "Submission failed");
+          }
+        }).catch(function(){
+          sLoading(false);
+          sErr("Network error");
+        });
+      };
+
+      if (done) {
+        return (
+          <div style={{maxWidth:480,margin:"0 auto",textAlign:"center",paddingTop:40}}>
+            <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(74,222,128,0.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",border:"2px solid rgba(74,222,128,0.3)",color:"#4ade80",fontSize:24}}>&#10003;</div>
+            <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 8px"}}>Submitted!</h2>
+            <p style={{fontSize:14,color:"#8a9ac4",margin:"0 0 20px"}}>Your work has been sent to Discovery.</p>
+            <button onClick={onBack} style={{padding:"10px 24px",borderRadius:10,background:"#5ea8ff",border:"none",color:"#071120",fontWeight:700,fontSize:13,cursor:"pointer"}}>Back</button>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{maxWidth:580,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:22}}>
+            <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Share your work</h2>
+            <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 16px"}}>No credentials required. If you investigated something, this is the place.</p>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <input value={t} onChange={(e)=>sT(e.target.value)} placeholder="Title — what did you investigate?" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
+              <select value={cat} onChange={(e)=>sCat(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:cat?"#edf1ff":"#3a4a6e",fontSize:12,fontFamily:"inherit",boxSizing:"border-box"}}>
+                <option value="">Category</option>
+                {CATS.map((x)=><option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
+              </select>
+              <textarea value={a} onChange={(e)=>sA(e.target.value)} rows={3} placeholder="Abstract — summarize your main idea" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+              <textarea value={b} onChange={(e)=>sB(e.target.value)} rows={10} placeholder="Full paper text" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+              {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
+              <button onClick={submit} disabled={loading||!t||!a||!b||!cat} style={{padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:t&&a&&b&&cat?"pointer":"not-allowed",background:t&&a&&b&&cat?"linear-gradient(135deg,#5ea8ff,#3d8be0)":"rgba(255,255,255,0.04)",color:t&&a&&b&&cat?"#071120":"#3a4a6e"}}>{loading?"Submitting...":"Submit for review"}</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Profile({user,onBack,onOpen}) {
+      const u = user || _usr;
+      const [papers,sPapers] = useState([]);
+
+      useEffect(() => {
+        if (!u || !u.id) return;
+        API.get("/api/users/" + u.id).then(function(d){
+          if (d && d.user && d.user.papers) sPapers(d.user.papers);
+        });
+      }, [u && u.id]);
+
+      return (
+        <div style={{maxWidth:580,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:24,textAlign:"center",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:0}}><Av user={u} size={64}/></div>
+            <h2 style={{fontSize:20,fontWeight:800,margin:"12px 0 4px"}}>{u.display_name}</h2>
+            <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{u.bio || ""}</p>
+            <div style={{display:"flex",justifyContent:"center",gap:28,marginBottom:6}}>
+              <div><div style={{fontSize:20,fontWeight:800}}>{u.paper_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Papers</div></div>
+              <div><div style={{fontSize:20,fontWeight:800}}>{u.review_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Reviews</div></div>
+              <div><div style={{fontSize:20,fontWeight:800,color:"#5ea8ff"}}>{typeof u.reputation_score === "number" ? u.reputation_score.toFixed(1) : "0.0"}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Rep</div></div>
+            </div>
+          </div>
+
+          {papers.length > 0 && papers.map((p) => <Card key={p.id} paper={p} onOpen={onOpen} onProfile={()=>{}} useApi={false}/>)}
+        </div>
+      );
+    }
+
+    function Notifs({onBack,items}) {
+      const list = items || [];
+      return (
+        <div style={{maxWidth:580,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+          <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 14px"}}>Notifications</h2>
+
+          {list.length === 0 && <div style={{padding:"20px 0",color:"#5a6a94",fontSize:13}}>No notifications.</div>}
+
+          {list.map((n) => (
+            <div key={n.id} style={{padding:"12px 16px",borderRadius:12,background:n.is_read?"rgba(255,255,255,0.02)":"rgba(94,168,255,0.06)",border:"1px solid "+(n.is_read?"rgba(255,255,255,0.05)":"rgba(94,168,255,0.12)"),marginBottom:8}}>
+              <div style={{fontSize:13,fontWeight:600}}>{n.title}</div>
+              {n.body && <div style={{fontSize:12,color:"#6b7db3",marginTop:2}}>{n.body}</div>}
+              {n.created_at && <div style={{fontSize:10,color:"#4a5a7e",marginTop:5}}>{tAgo(n.created_at)}</div>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function Tools({onBack}) {
+      return (
+        <div style={{maxWidth:600,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
+          <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Research Tools</h2>
+          <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Tool routes are not enabled in this server build.</p>
+          <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#8a9ac4",lineHeight:1.6}}>
+            This frontend is matched to the current Flask API for auth, feed, submissions, comments, likes, profiles, and notifications.
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [authed,sAuthed] = useState(false);
+      const [v,sV] = useState("feed");
+      const [ft,sFt] = useState("discovery");
+      const [cf,sCf] = useState(null);
+      const [q,sQ] = useState("");
+      const [sel,sSel] = useState(null);
+      const [ns,sNs] = useState([]);
+      const [papers,sPapers] = useState([]);
+      const [pubPapers,sPub] = useState([]);
+      const [notifs,sNotifs] = useState([]);
+      const [useApi,sUseApi] = useState(false);
+      const [feedLoading,sFeedLoading] = useState(false);
+
+      useEffect(() => {
+        API.get("/api/auth/me").then(function(d){
+          if (d && d.user) {
+            _usr = d.user;
+            _usr.initials = _usr.initials || (_usr.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+            sAuthed(true);
+            sUseApi(true);
+          }
+        });
+      }, []);
+
+      useEffect(() => {
+        if (!useApi) return;
+        API.get("/api/notifications").then(function(d){
+          if (d && d.notifications) sNotifs(d.notifications);
+        });
+      }, [useApi]);
+
+      const loadFeed = (tab, categoryId, searchQ) => {
+        sFeedLoading(true);
+        let url = tab === "published" ? "/api/feed/published" : "/api/feed/discovery";
+        const params = [];
+        if (categoryId) params.push("category_id=" + encodeURIComponent(categoryId));
+        if (searchQ && searchQ.trim()) params.push("q=" + encodeURIComponent(searchQ.trim()));
+        if (params.length) url += "?" + params.join("&");
+
+        API.get(url).then(function(d){
+          const mapped = (d && d.papers ? d.papers : []).map(function(p){
+            p.comments = p.comments || [];
+            p.author = p.author || _usr;
+            p.author.initials = p.author.initials || (p.author.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+            p.author.avatar_color = p.author.avatar_color || "#5ea8ff";
+            p.category = p.category || {id:0,name:"Physics",emoji:"📐"};
+            p.tags = p.tags || [];
+            return p;
+          });
+          if (tab === "published") sPub(mapped);
+          else sPapers(mapped);
+          sFeedLoading(false);
+        }).catch(function(){
+          sFeedLoading(false);
+        });
+      };
+
+      useEffect(() => {
+        loadFeed(ft, cf, q);
+      }, [ft, cf]);
+
+      const unr = notifs.filter((n) => !n.is_read).length;
+
+      const push = (nv,d) => {
+        sNs((s) => [...s,{v,ft,sel,cf,q}]);
+        if (nv==="paper" || nv==="profile") {
+          sV(nv);
+          sSel(d);
+        } else {
+          sV(nv);
+        }
+      };
+
+      const pop = () => {
+        const p = ns[ns.length-1];
+        if (p) {
+          sNs((s)=>s.slice(0,-1));
+          sV(p.v);
+          sFt(p.ft);
+          sSel(p.sel);
+          sCf(p.cf);
+          sQ(p.q);
+        } else {
+          sV("feed");
+        }
+      };
+
+      const onAuth = (u, isRealAuth) => {
+        _usr = u;
+        _usr.initials = _usr.initials || (_usr.display_name||"??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+        _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+        sAuthed(true);
+        sUseApi(!!isRealAuth);
+      };
+
+      const handleLike = (paper, prevLiked, done) => {
+        if (!useApi || !paper.blind_id) {
+          done && done(false);
+          return;
+        }
+        API.post("/api/submissions/" + paper.blind_id + "/like", {}).then(function(d){
+          if (d && typeof d.liked === "boolean") {
+            done && done(true, d.liked);
+            if (ft === "published") {
+              sPub(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:d.liked ? (p.like_count||0)+1 : Math.max(0,(p.like_count||1)-1)} : p));
+            } else {
+              sPapers(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:d.liked ? (p.like_count||0)+1 : Math.max(0,(p.like_count||1)-1)} : p));
+            }
+          } else {
+            done && done(false);
+          }
+        }).catch(function(){ done && done(false); });
+      };
+
+      const all = ft==="published" ? pubPapers : papers;
+      const filt = all.filter((p) => {
+        if (cf && p.category && p.category.id !== cf) return false;
+        if (q) {
+          const s = q.toLowerCase();
+          return (p.title||"").toLowerCase().includes(s) || (p.abstract||"").toLowerCase().includes(s);
+        }
+        return true;
+      });
+
+      if (!authed) return <AuthScreen onAuth={onAuth} />;
+
+      return (
+        <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"}}>
+          <header style={{position:"sticky",top:0,zIndex:50,background:"rgba(8,12,24,0.92)",backdropFilter:"blur(16px)",borderBottom:"1px solid rgba(255,255,255,0.06)",paddingTop:"env(safe-area-inset-top)"}}>
+            <div style={{maxWidth:680,margin:"0 auto",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div onClick={() => {sV("feed");sFt("discovery");sNs([]);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:28,height:28,borderRadius:7,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800}}>&#x29C7;</div>
+                <span style={{fontWeight:800,fontSize:15}}>The Journal</span>
+              </div>
+
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={() => push("submit")} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",border:"none",color:"#071120",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Submit</button>
+                <button onClick={() => push("notifs")} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#5a6a94",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
+                  <HIcon d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" s={15}/>
+                  {unr > 0 && <span style={{position:"absolute",top:5,right:5,width:6,height:6,borderRadius:"50%",background:"#ff4d6a"}}/>}
+                </button>
+                <div onClick={() => push("profile", _usr)} style={{cursor:"pointer"}}><Av user={_usr} size={30}/></div>
+              </div>
+            </div>
+          </header>
+
+          <main style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
+            {v==="feed" && (
+              <div style={{animation:"fadeIn .25s"}}>
+                <div style={{marginBottom:14,padding:"14px 16px",borderRadius:12,background:"linear-gradient(135deg,rgba(94,168,255,0.05),rgba(94,168,255,0.02))",border:"1px solid rgba(94,168,255,0.08)"}}>
+                  <p style={{fontSize:13,color:"#8a9ac4",margin:0,lineHeight:1.5}}><span style={{color:"#5ea8ff",fontWeight:700}}>Welcome.</span> No degree required. Just honest investigation and community feedback.</p>
+                </div>
+
+                <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:12}}>
+                  <button onClick={() => sFt("discovery")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:ft==="discovery"?"rgba(94,168,255,0.12)":"transparent",color:ft==="discovery"?"#5ea8ff":"#4a5a7e"}}>Discovery</button>
+                  <button onClick={() => sFt("published")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:ft==="published"?"rgba(94,168,255,0.12)":"transparent",color:ft==="published"?"#5ea8ff":"#4a5a7e"}}>Published</button>
+                </div>
+
+                <div style={{position:"relative",marginBottom:10}}>
+                  <input value={q} onChange={(e)=>sQ(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter") loadFeed(ft, cf, e.target.value);}} placeholder="Search papers..." style={{width:"100%",padding:"9px 12px 9px 32px",borderRadius:10,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                  <div style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#3a4a6e",pointerEvents:"none"}}>
+                    <HIcon d="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" s={14}/>
+                  </div>
+                </div>
+
+                <div style={{display:"flex",gap:5,overflowX:"auto",marginBottom:12,WebkitOverflowScrolling:"touch"}}>
+                  <button onClick={() => sCf(null)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,background:!cf?"rgba(94,168,255,0.1)":"transparent",borderColor:!cf?"rgba(94,168,255,0.2)":"rgba(255,255,255,0.06)",color:!cf?"#5ea8ff":"#4a5a7e"}}>All</button>
+                  {CATS.map((c) => <button key={c.id} onClick={() => sCf(c.id)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,background:cf===c.id?"rgba(94,168,255,0.1)":"transparent",borderColor:cf===c.id?"rgba(94,168,255,0.2)":"rgba(255,255,255,0.06)",color:cf===c.id?"#5ea8ff":"#4a5a7e"}}>{c.emoji} {c.name}</button>)}
+                </div>
+
+                {feedLoading && <div style={{padding:"18px 0",color:"#5a6a94",fontSize:13}}>Loading…</div>}
+
+                {!feedLoading && filt.map((p,i) => <div key={p.id} style={{animation:"fadeIn .25s ease "+i*0.04+"s both"}}><Card paper={p} onOpen={(p)=>push("paper",p)} onProfile={(u)=>push("profile",u)} onLike={handleLike} useApi={useApi}/></div>)}
+                {!feedLoading && filt.length===0 && <div style={{textAlign:"center",padding:30,color:"#4a5a7e"}}><p>No papers found.</p></div>}
+              </div>
+            )}
+
+            {v==="paper" && sel && <div style={{animation:"fadeIn .2s"}}><Detail paper={sel} onBack={pop} onProfile={(u)=>push("profile",u)} onRefresh={()=>loadFeed(ft, cf, q)} useApi={useApi}/></div>}
+            {v==="profile" && sel && <div style={{animation:"fadeIn .2s"}}><Profile user={sel} onBack={pop} onOpen={(p)=>push("paper",p)}/></div>}
+            {v==="submit" && <div style={{animation:"fadeIn .2s"}}><Submit onBack={pop} onSubmitted={()=>loadFeed("discovery", cf, q)} useApi={useApi}/></div>}
+            {v==="notifs" && <div style={{animation:"fadeIn .2s"}}><Notifs onBack={pop} items={notifs}/></div>}
+            {v==="tools" && <div style={{animation:"fadeIn .2s"}}><Tools onBack={pop}/></div>}
+          </main>
+
+          <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:"rgba(8,12,24,0.94)",backdropFilter:"blur(16px)",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-around",padding:"6px 0 calc(6px + env(safe-area-inset-bottom))"}}>
+            <button onClick={() => {sV("feed");sFt("discovery");sNs([]);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="feed"&&ft==="discovery"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+              <HIcon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" s={19}/><span>Discover</span>
+            </button>
+            <button onClick={() => {sV("feed");sFt("published");sNs([]);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="feed"&&ft==="published"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+              <HIcon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M18 2H6v7a6 6 0 0 0 12 0V2Z" s={19}/><span>Published</span>
+            </button>
+            <button onClick={() => push("submit")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="submit"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+              <HIcon d="M12 5v14M5 12h14" s={19}/><span>Submit</span>
+            </button>
+            <button onClick={() => push("tools")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="tools"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+              <HIcon d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12" s={19}/><span>Tools</span>
+            </button>
+            <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+              <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
+            </button>
+          </nav>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App/>);
+
+    setTimeout(() => {
+      const s = document.getElementById("splash");
+      if (s) s.classList.add("hide");
+    }, 600);
+  </script>
+
+  <script>
     setTimeout(function() {
       var r = document.getElementById('root');
       if (r && !r.hasChildNodes()) {
         var s = document.getElementById('splash');
-        if (s) s.innerHTML = '<div style="background:linear-gradient(135deg,#5ea8ff,#3d70b8);width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px">&#x29C7;</div><h1 style="font-size:20px;font-weight:800">The Journal</h1><p style="color:#5a6a94;margin-top:4px;font-size:13px">Independent Physics</p><p style="color:#ef4444;margin-top:16px;font-size:13px">App is loading slowly. Try refreshing.</p><a href="/api/stats" style="color:#5ea8ff;margin-top:8px;font-size:12px;display:block">Check API Status</a>';
+        if (s) s.innerHTML = '<div class="d" style="background:linear-gradient(135deg,#5ea8ff,#3d70b8);width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px">&#x29C7;</div><h1>The Journal</h1><p style="color:#5a6a94;margin-top:4px">Independent Physics</p><p style="color:#ef4444;margin-top:16px;font-size:13px">App is loading slowly. Try refreshing.</p><a href="/api/stats" style="color:#5ea8ff;margin-top:8px;font-size:12px;display:block">Check API Status</a>';
       }
     }, 15000);
-    </script>
+  </script>
 </body>
 </html>
