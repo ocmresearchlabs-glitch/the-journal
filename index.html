@@ -43,7 +43,7 @@
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
 
   <script type="text/babel">
-    const {useState,useEffect} = React;
+    const {useState,useEffect,useRef,useCallback} = React;
 
     const CATS = [
       {id:1,slug:"foundations",name:"Foundations of Physics",emoji:"🌌"},
@@ -56,6 +56,7 @@
 
     let _usr = {
       id:1,
+      email:"guest",
       display_name:"Guest",
       initials:"GU",
       bio:"",
@@ -64,7 +65,8 @@
       review_count:0,
       follower_count:0,
       avatar_color:"#5ea8ff",
-      joined:null
+      joined:null,
+      role:"guest"
     };
 
     const tAgo = (d) => {
@@ -108,6 +110,20 @@
       }
     };
 
+    function postForm(url, formData) {
+      return new Promise(function(resolve){
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.onload = function(){
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch(e){ resolve({}); }
+        };
+        xhr.onerror = function(){ resolve({error:"Network error"}); };
+        xhr.send(formData);
+      });
+    }
+
     function HIcon({d,s=17,f}) {
       return (
         <svg width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -117,12 +133,14 @@
     }
 
     function Av({user,size=36}) {
-      const initials = user.initials || (user.display_name || "??").split(" ").map(x=>x[0]).join("").toUpperCase().slice(0,2);
+      const initials = user && user.initials ? user.initials : ((user && user.display_name ? user.display_name : "??").split(" ").map(x=>x[0]).join("").toUpperCase().slice(0,2) || "??");
+      const color = user && user.avatar_color ? user.avatar_color : "#5ea8ff";
       return (
         <div style={{
           width:size,height:size,borderRadius:"50%",
-          background:"linear-gradient(135deg,"+(user.avatar_color||"#5ea8ff")+","+(user.avatar_color||"#5ea8ff")+"88)",
-          display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0
+          background:"linear-gradient(135deg,"+color+","+color+"88)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0
         }}>
           {initials}
         </div>
@@ -138,81 +156,6 @@
       );
     }
 
-    function AuthScreen({onAuth}) {
-      const [mode,sMode] = useState("login");
-      const [email,sEmail] = useState("");
-      const [name,sName] = useState("");
-      const [pw,sPw] = useState("");
-      const [err,sErr] = useState("");
-      const [loading,sLoading] = useState(false);
-
-      const submit = () => {
-        sErr("");
-        sLoading(true);
-
-        const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-        const body = mode === "login"
-          ? { email: email.trim(), password: pw }
-          : { email: email.trim(), display_name: name.trim(), password: pw };
-
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", url, true);
-        xhr.withCredentials = true;
-        xhr.setRequestHeader("Content-Type", "application/json");
-
-        xhr.onload = function() {
-          sLoading(false);
-          let res = {};
-          try { res = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch(e) {}
-
-          if (xhr.status >= 200 && xhr.status < 300 && res.user) {
-            _usr = res.user;
-            _usr.initials = _usr.initials || (_usr.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
-            onAuth(_usr, true);
-            return;
-          }
-
-          let msg = res.error || ("Error (" + xhr.status + ")");
-          if (res.detail) msg += ": " + res.detail;
-          sErr(msg);
-        };
-
-        xhr.onerror = function() {
-          sLoading(false);
-          sErr("Network error");
-        };
-
-        xhr.send(JSON.stringify(body));
-      };
-
-      return (
-        <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
-          <div style={{width:52,height:52,borderRadius:13,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",marginBottom:20}}>&#x29C7;</div>
-          <h1 style={{fontSize:24,fontWeight:800,marginBottom:4}}>The Journal</h1>
-          <p style={{fontSize:13,color:"#5ea8ff",marginBottom:24}}>Independent Physics Platform</p>
-
-          <div style={{width:"100%",maxWidth:360}}>
-            <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:16}}>
-              <button onClick={() => sMode("login")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="login"?"rgba(94,168,255,0.12)":"transparent",color:mode==="login"?"#5ea8ff":"#4a5a7e"}}>Sign In</button>
-              <button onClick={() => sMode("register")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="register"?"rgba(94,168,255,0.12)":"transparent",color:mode==="register"?"#5ea8ff":"#4a5a7e"}}>Create Account</button>
-            </div>
-
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {mode==="register" && <input value={name} onChange={(e)=>sName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>}
-              <input value={email} onChange={(e)=>sEmail(e.target.value)} placeholder="Email" type="email" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
-              <input value={pw} onChange={(e)=>sPw(e.target.value)} placeholder="Password" type="password" onKeyDown={(e)=>{if(e.key==="Enter") submit();}} style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
-              {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
-              <button onClick={submit} disabled={loading||!email||!pw||(mode==="register"&&!name)} style={{padding:"12px",borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
-            </div>
-
-            <button onClick={() => onAuth(_usr, false)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest</button>
-            <p style={{fontSize:11,color:"#3a4a6e",textAlign:"center",marginTop:16,lineHeight:1.5}}>No degree required. No institution needed. Just curiosity.</p>
-          </div>
-        </div>
-      );
-    }
-
     function Card({paper,onOpen,onProfile,onLike,useApi}) {
       const p = paper;
       const [lk,sLk] = useState(!!p.user_liked);
@@ -221,16 +164,18 @@
 
       const likeClick = (e) => {
         e.stopPropagation();
-        if (!useApi) return;
+        if (!useApi || !p.blind_id) return;
         const prevLiked = lk;
+        const prevCount = lc;
         sLk(!prevLiked);
         sLc(prevLiked ? Math.max(0, lc - 1) : lc + 1);
-        onLike && onLike(p, prevLiked, (ok, likedValue) => {
+        onLike && onLike(p, prevLiked, prevCount, (ok, likedValue, likeCountValue) => {
           if (!ok) {
             sLk(prevLiked);
-            sLc(lc);
-          } else if (typeof likedValue === "boolean") {
-            sLk(likedValue);
+            sLc(prevCount);
+          } else {
+            if (typeof likedValue === "boolean") sLk(likedValue);
+            if (typeof likeCountValue === "number") sLc(likeCountValue);
           }
         });
       };
@@ -440,29 +385,77 @@
       );
     }
 
-    function Profile({user,onBack,onOpen}) {
+    function Profile({user,onBack,onOpen,isSelf,onLogout,useApi,onProfileSaved}) {
       const u = user || _usr;
       const [papers,sPapers] = useState([]);
+      const [editing,sEditing] = useState(false);
+      const [displayName,sDisplayName] = useState(u.display_name || "");
+      const [bio,sBio] = useState(u.bio || "");
+      const [saving,sSaving] = useState(false);
 
       useEffect(() => {
         if (!u || !u.id) return;
         API.get("/api/users/" + u.id).then(function(d){
-          if (d && d.user && d.user.papers) sPapers(d.user.papers);
+          if (d && d.user) {
+            sPapers(d.user.papers || []);
+            if (!editing) {
+              sDisplayName(d.user.display_name || "");
+              sBio(d.user.bio || "");
+            }
+          }
         });
       }, [u && u.id]);
+
+      const saveProfile = () => {
+        if (!useApi) return;
+        sSaving(true);
+        API.post("/api/auth/profile", {display_name:displayName, bio:bio}).then(function(d){
+          sSaving(false);
+          if (d && d.user) {
+            _usr = d.user;
+            sEditing(false);
+            onProfileSaved && onProfileSaved(d.user);
+          }
+        }).catch(function(){ sSaving(false); });
+      };
 
       return (
         <div style={{maxWidth:580,margin:"0 auto"}}>
           <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+
           <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:24,textAlign:"center",marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"center",marginBottom:0}}><Av user={u} size={64}/></div>
-            <h2 style={{fontSize:20,fontWeight:800,margin:"12px 0 4px"}}>{u.display_name}</h2>
-            <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{u.bio || ""}</p>
-            <div style={{display:"flex",justifyContent:"center",gap:28,marginBottom:6}}>
-              <div><div style={{fontSize:20,fontWeight:800}}>{u.paper_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Papers</div></div>
-              <div><div style={{fontSize:20,fontWeight:800}}>{u.review_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Reviews</div></div>
-              <div><div style={{fontSize:20,fontWeight:800,color:"#5ea8ff"}}>{typeof u.reputation_score === "number" ? u.reputation_score.toFixed(1) : "0.0"}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Rep</div></div>
-            </div>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Av user={u} size={64}/></div>
+
+            {!editing ? (
+              <>
+                <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>{u.display_name}</h2>
+                <p style={{fontSize:12,color:"#5a6a94",margin:"0 0 8px"}}>{u.email || ""}</p>
+                <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{u.bio || ""}</p>
+                <div style={{display:"flex",justifyContent:"center",gap:28,marginBottom:14}}>
+                  <div><div style={{fontSize:20,fontWeight:800}}>{u.paper_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Papers</div></div>
+                  <div><div style={{fontSize:20,fontWeight:800}}>{u.review_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Reviews</div></div>
+                  <div><div style={{fontSize:20,fontWeight:800,color:"#5ea8ff"}}>{typeof u.reputation_score === "number" ? u.reputation_score.toFixed(1) : "0.0"}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Rep</div></div>
+                </div>
+
+                {isSelf && useApi && (
+                  <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:10}}>
+                    <button onClick={()=>sEditing(true)} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(94,168,255,0.25)",background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:700,fontSize:12,cursor:"pointer"}}>Edit Profile</button>
+                    <button onClick={onLogout} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.08)",color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}}>Sign Out</button>
+                  </div>
+                )}
+
+                {u.role === "admin" && <div style={{fontSize:10,color:"#f0a030",fontWeight:700}}>Admin</div>}
+              </>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <input value={displayName} onChange={(e)=>sDisplayName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+                <textarea value={bio} onChange={(e)=>sBio(e.target.value)} rows={4} placeholder="Bio" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+                <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                  <button onClick={saveProfile} disabled={saving} style={{padding:"8px 18px",borderRadius:8,border:"none",background:"#5ea8ff",color:"#071120",fontWeight:700,fontSize:12,cursor:"pointer"}}>{saving ? "Saving..." : "Save"}</button>
+                  <button onClick={()=>sEditing(false)} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#5a6a94",fontWeight:700,fontSize:12,cursor:"pointer"}}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {papers.length > 0 && papers.map((p) => <Card key={p.id} paper={p} onOpen={onOpen} onProfile={()=>{}} useApi={false}/>)}
@@ -490,14 +483,347 @@
       );
     }
 
-    function Tools({onBack}) {
+    function ToolHub({onBack,onOpen}) {
+      const tools = [
+        {id:"desk_review",title:"AI Desk Review",desc:"8-criterion desk review for manuscript text",emoji:"✦",color:"#38bdf8"},
+        {id:"ocm",title:"Stability Analysis",desc:"Contraction-rate classification for numerical time series",emoji:"📊",color:"#5ea8ff"},
+        {id:"er",title:"Topology Mapping",desc:"Coherence graph and bridge detection from a numeric series",emoji:"🌉",color:"#a78bfa"},
+        {id:"icm",title:"Invariant Detection",desc:"Disruption morphology and admissibility analysis",emoji:"🔬",color:"#f0a030"},
+        {id:"clm",title:"Coherence Field Lab",desc:"Field coherence simulation with uploaded forcing",emoji:"ψ",color:"#c084fc"}
+      ];
+
       return (
         <div style={{maxWidth:600,margin:"0 auto"}}>
           <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
           <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Research Tools</h2>
-          <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Tool routes are not enabled in this server build.</p>
-          <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#8a9ac4",lineHeight:1.6}}>
-            This frontend is matched to the current Flask API for auth, feed, submissions, comments, likes, profiles, and notifications.
+          <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Five analysis engines, fully wired.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {tools.map((t) => (
+              <div key={t.id} onClick={() => onOpen(t)} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:40,height:40,borderRadius:10,background:t.color+"15",border:"1px solid "+t.color+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{t.emoji}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14}}>{t.title}</div>
+                  <div style={{fontSize:12,color:"#6b7db3"}}>{t.desc}</div>
+                </div>
+                <span style={{color:"#3a4a6e",fontSize:18}}>&#8250;</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function ToolRunner({tool,onBack,useApi}) {
+      const [input,sInput] = useState("");
+      const [file,sFile] = useState(null);
+      const [loading,sLoading] = useState(false);
+      const [result,sResult] = useState(null);
+
+      const run = async () => {
+        if (!useApi) {
+          sResult({error:"Sign in to use the research tools."});
+          return;
+        }
+        sLoading(true);
+        const fd = new FormData();
+        fd.append("tool", tool.id);
+        fd.append("input", input || "");
+        if (file) fd.append("file", file);
+        const res = await postForm("/api/tools/run", fd);
+        sLoading(false);
+        sResult(res);
+      };
+
+      return (
+        <div style={{maxWidth:620,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
+          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+            <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 6px"}}>{tool.title}</h2>
+            <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{tool.desc}</p>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <textarea value={input} onChange={(e)=>sInput(e.target.value)} rows={8} placeholder={tool.id==="desk_review" ? "Paste manuscript text here..." : "Paste numbers, CSV text, or a short description..."} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+              <label style={{padding:"12px 14px",borderRadius:10,border:"1px dashed rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.02)",fontSize:12,color:"#8a9ac4",cursor:"pointer"}}>
+                {file ? file.name : "Attach a file (CSV, TXT, TEX, PDF)"}
+                <input type="file" style={{display:"none"}} onChange={(e)=>sFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
+              </label>
+              <button onClick={run} disabled={loading} style={{padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading ? "Running..." : "Run Analysis"}</button>
+            </div>
+
+            {result && (
+              <div style={{marginTop:16,padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
+                {result.error ? (
+                  <div style={{color:"#ef4444",fontSize:13}}>{result.error}</div>
+                ) : (
+                  <>
+                    {result.classification && <div style={{marginBottom:10}}><Badge label={result.classification} color="#5ea8ff" /></div>}
+                    {result.summary && <div style={{fontSize:13,color:"#c7d2f0",lineHeight:1.6,marginBottom:10}}>{result.summary}</div>}
+                    {result.details && (
+                      <pre style={{whiteSpace:"pre-wrap",wordBreak:"break-word",fontSize:12,lineHeight:1.5,color:"#8a9ac4",fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace"}}>
+{typeof result.details === "string" ? result.details : JSON.stringify(result.details, null, 2)}
+                      </pre>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function AdminDash({onBack}) {
+      const [tab,sTab] = useState("submissions");
+      const [subs,sSubs] = useState([]);
+      const [users,sUsers] = useState([]);
+      const [loading,sLoading] = useState(false);
+      const [msg,sMsg] = useState("");
+
+      const flash = (text) => {
+        sMsg(text);
+        setTimeout(()=>sMsg(""), 2200);
+      };
+
+      const load = useCallback(() => {
+        sLoading(true);
+        if (tab === "submissions") {
+          API.get("/api/admin/submissions").then(function(d){
+            sSubs(d.submissions || []);
+            sLoading(false);
+          }).catch(function(){ sLoading(false); });
+        } else {
+          API.get("/api/admin/users").then(function(d){
+            sUsers(d.users || []);
+            sLoading(false);
+          }).catch(function(){ sLoading(false); });
+        }
+      }, [tab]);
+
+      useEffect(() => { load(); }, [load]);
+
+      const setStatus = (id, status) => {
+        API.post("/api/admin/submissions/" + id + "/status", {status}).then(function(d){
+          if (d && d.ok) {
+            flash("Updated");
+            load();
+          } else {
+            flash(d.error || "Failed");
+          }
+        });
+      };
+
+      const deleteSubmission = (id) => {
+        if (!confirm("Delete this submission?")) return;
+        const xhr = new XMLHttpRequest();
+        xhr.open("DELETE", "/api/admin/submissions/" + id, true);
+        xhr.withCredentials = true;
+        xhr.onload = function(){
+          let d = {};
+          try { d = JSON.parse(xhr.responseText); } catch(e) {}
+          if (xhr.status >= 200 && xhr.status < 300 && d.ok) {
+            flash("Deleted");
+            load();
+          } else {
+            flash(d.error || "Failed");
+          }
+        };
+        xhr.onerror = function(){ flash("Network error"); };
+        xhr.send();
+      };
+
+      const setRole = (id, role) => {
+        API.post("/api/admin/users/" + id + "/role", {role}).then(function(d){
+          if (d && d.ok) {
+            flash("Updated");
+            load();
+          } else {
+            flash(d.error || "Failed");
+          }
+        });
+      };
+
+      const banUser = (id, ban) => {
+        API.post("/api/admin/users/" + id + (ban ? "/ban" : "/unban"), {}).then(function(d){
+          if (d && d.ok) {
+            flash("Updated");
+            load();
+          } else {
+            flash(d.error || "Failed");
+          }
+        });
+      };
+
+      const deleteUser = (id) => {
+        if (!confirm("Delete this user?")) return;
+        const xhr = new XMLHttpRequest();
+        xhr.open("DELETE", "/api/admin/users/" + id, true);
+        xhr.withCredentials = true;
+        xhr.onload = function(){
+          let d = {};
+          try { d = JSON.parse(xhr.responseText); } catch(e) {}
+          if (xhr.status >= 200 && xhr.status < 300 && d.ok) {
+            flash("Deleted");
+            load();
+          } else {
+            flash(d.error || "Failed");
+          }
+        };
+        xhr.onerror = function(){ flash("Network error"); };
+        xhr.send();
+      };
+
+      const resetDb = () => {
+        if (!confirm("This will delete all non-admin users and all submissions. Continue?")) return;
+        API.post("/api/admin/reset-db", {}).then(function(d){
+          if (d && d.ok) {
+            flash("Database reset");
+            load();
+          } else {
+            flash(d.error || "Failed");
+          }
+        });
+      };
+
+      return (
+        <div style={{maxWidth:720,margin:"0 auto"}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
+          <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Admin Dashboard</h2>
+          <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Submissions, users, moderation, and reset controls.</p>
+
+          {msg && <div style={{marginBottom:12,padding:"10px 12px",borderRadius:10,background:"rgba(94,168,255,0.08)",border:"1px solid rgba(94,168,255,0.15)",fontSize:12,color:"#7da8d4"}}>{msg}</div>}
+
+          <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:12}}>
+            <button onClick={() => sTab("submissions")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:tab==="submissions"?"rgba(94,168,255,0.12)":"transparent",color:tab==="submissions"?"#5ea8ff":"#4a5a7e"}}>Submissions</button>
+            <button onClick={() => sTab("users")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:tab==="users"?"rgba(94,168,255,0.12)":"transparent",color:tab==="users"?"#5ea8ff":"#4a5a7e"}}>Users</button>
+          </div>
+
+          {loading && <div style={{padding:"20px 0",color:"#5a6a94",fontSize:13}}>Loading…</div>}
+
+          {!loading && tab === "submissions" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {subs.length === 0 && <div style={{color:"#5a6a94",fontSize:13}}>No submissions.</div>}
+              {subs.map((s) => (
+                <div key={s.id} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:14}}>{s.title}</div>
+                      <div style={{fontSize:11,color:"#6b7db3"}}>{s.author_name || "Anonymous"} · {tAgo(s.created_at)}</div>
+                    </div>
+                    <Badge label={s.status_label || s.status} color={s.status_color || "#6b7db3"} />
+                  </div>
+                  <div style={{fontSize:12,color:"#8a9ac4",lineHeight:1.5,marginBottom:10}}>{s.abstract || ""}</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <button onClick={() => setStatus(s.id, "published")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(74,222,128,0.14)",color:"#4ade80",fontWeight:700,fontSize:11,cursor:"pointer"}}>Publish</button>
+                    <button onClick={() => setStatus(s.id, "under_review")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(240,160,48,0.14)",color:"#f0a030",fontWeight:700,fontSize:11,cursor:"pointer"}}>Review</button>
+                    <button onClick={() => setStatus(s.id, "desk_returned")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(94,168,255,0.14)",color:"#5ea8ff",fontWeight:700,fontSize:11,cursor:"pointer"}}>Return</button>
+                    <button onClick={() => setStatus(s.id, "declined")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(239,68,68,0.14)",color:"#ef4444",fontWeight:700,fontSize:11,cursor:"pointer"}}>Decline</button>
+                    <button onClick={() => deleteSubmission(s.id)} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(255,255,255,0.06)",color:"#c7d2f0",fontWeight:700,fontSize:11,cursor:"pointer"}}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && tab === "users" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {users.length === 0 && <div style={{color:"#5a6a94",fontSize:13}}>No users.</div>}
+              {users.map((u) => (
+                <div key={u.id} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <Av user={u} size={34} />
+                      <div>
+                        <div style={{fontWeight:700,fontSize:14}}>{u.display_name}</div>
+                        <div style={{fontSize:11,color:"#6b7db3"}}>{u.email} · {u.role}{u.is_banned ? " · banned" : ""}</div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:"#5a6a94"}}>{u.paper_count || 0} papers</div>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <button onClick={() => setRole(u.id, u.role === "admin" ? "member" : "admin")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(94,168,255,0.14)",color:"#5ea8ff",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u.role === "admin" ? "Demote" : "Promote"}</button>
+                    <button onClick={() => banUser(u.id, !u.is_banned)} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(240,160,48,0.14)",color:"#f0a030",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u.is_banned ? "Unban" : "Ban"}</button>
+                    <button onClick={() => deleteUser(u.id)} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(255,255,255,0.06)",color:"#c7d2f0",fontWeight:700,fontSize:11,cursor:"pointer"}}>Delete</button>
+                  </div>
+                </div>
+              ))}
+
+              <button onClick={resetDb} style={{marginTop:4,padding:"10px 14px",borderRadius:10,border:"1px solid rgba(239,68,68,0.18)",background:"rgba(239,68,68,0.08)",color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}}>Reset Database</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function AuthScreen({onAuth}) {
+      const [mode,sMode] = useState("login");
+      const [email,sEmail] = useState("");
+      const [name,sName] = useState("");
+      const [pw,sPw] = useState("");
+      const [err,sErr] = useState("");
+      const [loading,sLoading] = useState(false);
+
+      const submit = () => {
+        sErr("");
+        sLoading(true);
+
+        const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+        const body = mode === "login"
+          ? { email: email.trim(), password: pw }
+          : { email: email.trim(), display_name: name.trim(), password: pw };
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        xhr.onload = function() {
+          sLoading(false);
+          let res = {};
+          try { res = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch(e) {}
+
+          if (xhr.status >= 200 && xhr.status < 300 && res.user) {
+            _usr = res.user;
+            _usr.initials = _usr.initials || (_usr.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
+            onAuth(_usr, true);
+            return;
+          }
+
+          let msg = res.error || ("Error (" + xhr.status + ")");
+          if (res.detail) msg += ": " + res.detail;
+          sErr(msg);
+        };
+
+        xhr.onerror = function() {
+          sLoading(false);
+          sErr("Network error");
+        };
+
+        xhr.send(JSON.stringify(body));
+      };
+
+      return (
+        <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
+          <div style={{width:52,height:52,borderRadius:13,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",marginBottom:20}}>&#x29C7;</div>
+          <h1 style={{fontSize:24,fontWeight:800,marginBottom:4}}>The Journal</h1>
+          <p style={{fontSize:13,color:"#5ea8ff",marginBottom:24}}>Independent Physics Platform</p>
+
+          <div style={{width:"100%",maxWidth:360}}>
+            <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:16}}>
+              <button onClick={() => sMode("login")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="login"?"rgba(94,168,255,0.12)":"transparent",color:mode==="login"?"#5ea8ff":"#4a5a7e"}}>Sign In</button>
+              <button onClick={() => sMode("register")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="register"?"rgba(94,168,255,0.12)":"transparent",color:mode==="register"?"#5ea8ff":"#4a5a7e"}}>Create Account</button>
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {mode==="register" && <input value={name} onChange={(e)=>sName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>}
+              <input value={email} onChange={(e)=>sEmail(e.target.value)} placeholder="Email" type="email" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+              <input value={pw} onChange={(e)=>sPw(e.target.value)} placeholder="Password" type="password" onKeyDown={(e)=>{if(e.key==="Enter") submit();}} style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
+              {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
+              <button onClick={submit} disabled={loading||!email||!pw||(mode==="register"&&!name)} style={{padding:"12px",borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
+            </div>
+
+            <button onClick={() => onAuth(_usr, false)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest</button>
+            <p style={{fontSize:11,color:"#3a4a6e",textAlign:"center",marginTop:16,lineHeight:1.5}}>No degree required. No institution needed. Just curiosity.</p>
           </div>
         </div>
       );
@@ -510,6 +836,7 @@
       const [cf,sCf] = useState(null);
       const [q,sQ] = useState("");
       const [sel,sSel] = useState(null);
+      const [toolSel,sToolSel] = useState(null);
       const [ns,sNs] = useState([]);
       const [papers,sPapers] = useState([]);
       const [pubPapers,sPub] = useState([]);
@@ -530,13 +857,14 @@
       }, []);
 
       useEffect(() => {
+        if (!authed) return;
         if (!useApi) return;
         API.get("/api/notifications").then(function(d){
           if (d && d.notifications) sNotifs(d.notifications);
         });
-      }, [useApi]);
+      }, [authed, useApi]);
 
-      const loadFeed = (tab, categoryId, searchQ) => {
+      const loadFeed = useCallback((tab, categoryId, searchQ) => {
         sFeedLoading(true);
         let url = tab === "published" ? "/api/feed/published" : "/api/feed/discovery";
         const params = [];
@@ -560,19 +888,22 @@
         }).catch(function(){
           sFeedLoading(false);
         });
-      };
+      }, []);
 
       useEffect(() => {
-        loadFeed(ft, cf, q);
-      }, [ft, cf]);
+        if (authed) loadFeed(ft, cf, q);
+      }, [authed, ft, cf]);
 
       const unr = notifs.filter((n) => !n.is_read).length;
 
       const push = (nv,d) => {
-        sNs((s) => [...s,{v,ft,sel,cf,q}]);
+        sNs((s) => [...s,{v,ft,sel,cf,q,toolSel}]);
         if (nv==="paper" || nv==="profile") {
           sV(nv);
           sSel(d);
+        } else if (nv==="toolrun") {
+          sV(nv);
+          sToolSel(d);
         } else {
           sV(nv);
         }
@@ -587,6 +918,7 @@
           sSel(p.sel);
           sCf(p.cf);
           sQ(p.q);
+          sToolSel(p.toolSel);
         } else {
           sV("feed");
         }
@@ -600,18 +932,38 @@
         sUseApi(!!isRealAuth);
       };
 
-      const handleLike = (paper, prevLiked, done) => {
+      const onLogout = () => {
+        API.post("/api/auth/logout", {}).then(function(){
+          _usr = {
+            id:1,email:"guest",display_name:"Guest",initials:"GU",bio:"",reputation_score:0,
+            paper_count:0,review_count:0,follower_count:0,avatar_color:"#5ea8ff",joined:null,role:"guest"
+          };
+          sAuthed(false);
+          sUseApi(false);
+          sPapers([]);
+          sPub([]);
+          sNotifs([]);
+          sV("feed");
+          sFt("discovery");
+          sSel(null);
+          sToolSel(null);
+          sNs([]);
+        });
+      };
+
+      const handleLike = (paper, prevLiked, prevCount, done) => {
         if (!useApi || !paper.blind_id) {
           done && done(false);
           return;
         }
         API.post("/api/submissions/" + paper.blind_id + "/like", {}).then(function(d){
           if (d && typeof d.liked === "boolean") {
-            done && done(true, d.liked);
+            const count = typeof d.like_count === "number" ? d.like_count : (d.liked ? prevCount + 1 : Math.max(0, prevCount - 1));
+            done && done(true, d.liked, count);
             if (ft === "published") {
-              sPub(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:d.liked ? (p.like_count||0)+1 : Math.max(0,(p.like_count||1)-1)} : p));
+              sPub(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:count} : p));
             } else {
-              sPapers(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:d.liked ? (p.like_count||0)+1 : Math.max(0,(p.like_count||1)-1)} : p));
+              sPapers(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:count} : p));
             }
           } else {
             done && done(false);
@@ -683,10 +1035,12 @@
             )}
 
             {v==="paper" && sel && <div style={{animation:"fadeIn .2s"}}><Detail paper={sel} onBack={pop} onProfile={(u)=>push("profile",u)} onRefresh={()=>loadFeed(ft, cf, q)} useApi={useApi}/></div>}
-            {v==="profile" && sel && <div style={{animation:"fadeIn .2s"}}><Profile user={sel} onBack={pop} onOpen={(p)=>push("paper",p)}/></div>}
+            {v==="profile" && sel && <div style={{animation:"fadeIn .2s"}}><Profile user={sel} onBack={pop} onOpen={(p)=>push("paper",p)} isSelf={sel && _usr && sel.id === _usr.id} onLogout={onLogout} useApi={useApi} onProfileSaved={(user)=>{_usr=user;sSel(user);}}/></div>}
             {v==="submit" && <div style={{animation:"fadeIn .2s"}}><Submit onBack={pop} onSubmitted={()=>loadFeed("discovery", cf, q)} useApi={useApi}/></div>}
             {v==="notifs" && <div style={{animation:"fadeIn .2s"}}><Notifs onBack={pop} items={notifs}/></div>}
-            {v==="tools" && <div style={{animation:"fadeIn .2s"}}><Tools onBack={pop}/></div>}
+            {v==="tools" && <div style={{animation:"fadeIn .2s"}}><ToolHub onBack={pop} onOpen={(tool)=>push("toolrun", tool)} /></div>}
+            {v==="toolrun" && toolSel && <div style={{animation:"fadeIn .2s"}}><ToolRunner tool={toolSel} onBack={pop} useApi={useApi} /></div>}
+            {v==="admin" && <div style={{animation:"fadeIn .2s"}}><AdminDash onBack={pop} /></div>}
           </main>
 
           <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:"rgba(8,12,24,0.94)",backdropFilter:"blur(16px)",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-around",padding:"6px 0 calc(6px + env(safe-area-inset-bottom))"}}>
@@ -699,12 +1053,23 @@
             <button onClick={() => push("submit")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="submit"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
               <HIcon d="M12 5v14M5 12h14" s={19}/><span>Submit</span>
             </button>
-            <button onClick={() => push("tools")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="tools"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+            <button onClick={() => push("tools")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:(v==="tools"||v==="toolrun")?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
               <HIcon d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12" s={19}/><span>Tools</span>
             </button>
-            <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-              <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
-            </button>
+            {_usr && _usr.role === "admin" ? (
+              <button onClick={() => push("admin")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="admin"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+                <HIcon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" s={19}/><span>Admin</span>
+              </button>
+            ) : (
+              <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+                <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
+              </button>
+            )}
+            {_usr && _usr.role === "admin" && (
+              <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
+                <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
+              </button>
+            )}
           </nav>
         </div>
       );
