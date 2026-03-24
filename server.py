@@ -32,7 +32,9 @@ if not db_url:
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     db_url = "sqlite:///" + str(sqlite_path)
 
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-change-before-deploy")
+secret = os.getenv("SECRET_KEY") or "dev-change-before-deploy"
+app.config["SECRET_KEY"] = secret
+app.secret_key = secret
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
