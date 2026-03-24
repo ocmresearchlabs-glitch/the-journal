@@ -1,4 +1,6 @@
-flask>=3.0
-flask-sqlalchemy>=3.1
-flask-login>=0.6
-gunicorn>=21.2
+Flask
+Flask-Login
+Flask-SQLAlchemy
+SQLAlchemy
+gunicorn
+psycopg2-binary
