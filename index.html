@@ -1,1097 +1,515 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#080c18">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="The Journal">
-  <meta name="description" content="The Journal — Independent Physics">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/static/icon-192.png">
-  <title>The Journal — Independent Physics</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#080c18;color:#edf1ff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased}
-    #root{min-height:100vh;min-height:100dvh}
-    #splash{position:fixed;inset:0;background:#080c18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
-    #splash.hide{opacity:0;pointer-events:none}
-    #splash .d{width:52px;height:52px;background:linear-gradient(135deg,#5ea8ff,#3d70b8);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px;animation:pulse 2s ease-in-out infinite}
-    #splash h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
-    #splash p{font-size:13px;color:#5a6a94;margin-top:4px}
-    #splash .loading{margin-top:20px;font-size:12px;color:#3a4a6e}
-    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-    ::placeholder{color:#3a4a6e}
-    textarea:focus,input:focus,select:focus{outline:none;border-color:rgba(94,168,255,0.4)!important}
-    ::-webkit-scrollbar{width:5px}
-    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#080c18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Journal">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<title>The Journal — Independent Physics</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080c18;color:#edf1ff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased}
+#splash{position:fixed;inset:0;background:#080c18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .d{width:52px;height:52px;background:linear-gradient(135deg,#5ea8ff,#3d70b8);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px;animation:pulse 2s ease-in-out infinite}
+#splash h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+#splash p{font-size:13px;color:#5a6a94;margin-top:4px}
+#splash .loading{margin-top:20px;font-size:12px;color:#3a4a6e}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+::placeholder{color:#3a4a6e}
+textarea:focus,input:focus,select:focus{outline:none;border-color:rgba(94,168,255,0.4)!important}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+</style>
 </head>
 <body>
-  <div id="splash">
-    <div class="d">&#x29C7;</div>
-    <h1>The Journal</h1>
-    <p>Independent Physics</p>
-    <div class="loading">Loading app...</div>
-  </div>
-  <div id="root"></div>
+<div id="splash"><div class="d">&#x29C7;</div><h1>The Journal</h1><p>Independent Physics</p><div class="loading">Loading app...</div></div>
+<div id="root"></div>
 
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
 
-  <script type="text/babel">
-    const {useState,useEffect,useRef,useCallback} = React;
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback} = React;
 
-    const CATS = [
-      {id:1,slug:"foundations",name:"Foundations of Physics",emoji:"🌌"},
-      {id:2,slug:"math-physics",name:"Mathematical Physics",emoji:"📐"},
-      {id:3,slug:"nonlinear",name:"Nonlinear Dynamics",emoji:"🌀"},
-      {id:4,slug:"stat-mech",name:"Statistical Mechanics",emoji:"⚛️"},
-      {id:5,slug:"complex",name:"Complex Systems",emoji:"🕸️"},
-      {id:6,slug:"experimental",name:"Experimental & Observational",emoji:"🔬"}
-    ];
+/* ── DATA ────────────────────────────────────────────────── */
+const CATS=[{id:1,slug:"foundations",name:"Foundations of Physics",emoji:"\u{1F30C}"},{id:2,slug:"math-physics",name:"Mathematical Physics",emoji:"\u{1F4D0}"},{id:3,slug:"nonlinear",name:"Nonlinear Dynamics",emoji:"\u{1F300}"},{id:4,slug:"stat-mech",name:"Statistical Mechanics",emoji:"\u269B\uFE0F"},{id:5,slug:"complex",name:"Complex Systems",emoji:"\u{1F578}\uFE0F"},{id:6,slug:"experimental",name:"Experimental & Observational",emoji:"\u{1F52C}"}];
+let _usr={id:1,display_name:"Curious Mind",initials:"CM",bio:"Self-taught physicist.",reputation_score:4.2,paper_count:0,review_count:0,follower_count:0,avatar_color:"#5ea8ff",joined:"2026-01-15",role:"member",email:""};
+const _users=[_usr];
+let _papers=[];
+let _published=[];
+let _notifs=[];
+let _liked=new Set(),_saved=new Set(),_fol=new Set();
+const tAgo = (d) => { if(!d) return ""; const m=Math.floor((Date.now()-new Date(d))/6e4); return m<60?m+"m":m<1440?Math.floor(m/60)+"h":Math.floor(m/1440)+"d"; };
+const fDate = (d) => d ? new Date(d).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}) : "";
 
-    let _usr = {
-      id:1,
-      email:"guest",
-      display_name:"Guest",
-      initials:"GU",
-      bio:"",
-      reputation_score:0,
-      paper_count:0,
-      review_count:0,
-      follower_count:0,
-      avatar_color:"#5ea8ff",
-      joined:null,
-      role:"guest"
-    };
+/* ── ICONS ─────────────────────────────────────────────── */
+function HIcon({d,s=17,f}) { return <svg width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>; }
+function Av({user,size=36}) { const u=user||_usr; return <div style={{width:size,height:size,borderRadius:"50%",background:"linear-gradient(135deg,"+(u.avatar_color||"#5ea8ff")+","+(u.avatar_color||"#5ea8ff")+"88)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0}}>{u.initials||((u.display_name||"??").slice(0,2).toUpperCase())}</div>; }
+function Badge({label,color}) { return <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:color+"15",color:color,border:"1px solid "+color+"30"}}><span style={{width:5,height:5,borderRadius:"50%",background:color}}/>{label}</span>; }
 
-    const tAgo = (d) => {
-      if (!d) return "";
-      const m = Math.floor((Date.now()-new Date(d))/6e4);
-      return m < 60 ? m + "m" : m < 1440 ? Math.floor(m/60) + "h" : Math.floor(m/1440) + "d";
-    };
+/* ── CARD ──────────────────────────────────────────────── */
+function Card({paper,onOpen,onProfile,onLike}) {
+  const p = paper;
+  const [lk,sLk] = useState(!!p.user_liked || _liked.has(p.id));
+  const [sv,sSv] = useState(!!p.user_bookmarked || _saved.has(p.id));
+  const [lc,sLc] = useState(p.like_count || 0);
 
-    const fDate = (d) => {
-      if (!d) return "";
-      return new Date(d).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
-    };
-
-    const API = {
-      get(url) {
-        return new Promise(function(resolve){
-          const xhr = new XMLHttpRequest();
-          xhr.open("GET", url, true);
-          xhr.withCredentials = true;
-          xhr.onload = function(){
-            try { resolve(JSON.parse(xhr.responseText)); }
-            catch(e){ resolve({}); }
-          };
-          xhr.onerror = function(){ resolve({}); };
-          xhr.send();
-        });
-      },
-      post(url, body) {
-        return new Promise(function(resolve){
-          const xhr = new XMLHttpRequest();
-          xhr.open("POST", url, true);
-          xhr.withCredentials = true;
-          xhr.setRequestHeader("Content-Type", "application/json");
-          xhr.onload = function(){
-            try { resolve(JSON.parse(xhr.responseText)); }
-            catch(e){ resolve({}); }
-          };
-          xhr.onerror = function(){ resolve({}); };
-          xhr.send(JSON.stringify(body || {}));
-        });
-      }
-    };
-
-    function postForm(url, formData) {
-      return new Promise(function(resolve){
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", url, true);
-        xhr.withCredentials = true;
-        xhr.onload = function(){
-          try { resolve(JSON.parse(xhr.responseText)); }
-          catch(e){ resolve({}); }
-        };
-        xhr.onerror = function(){ resolve({error:"Network error"}); };
-        xhr.send(formData);
+  const doLike = (e) => {
+    e.stopPropagation();
+    if (onLike) {
+      onLike(p, function(nextLiked,nextCount){
+        sLk(nextLiked);
+        if (typeof nextCount === "number") sLc(nextCount);
       });
+      return;
     }
+    const n=!lk;
+    sLk(n);
+    sLc(n?lc+1:Math.max(0,lc-1));
+  };
 
-    function HIcon({d,s=17,f}) {
-      return (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d={d}/>
-        </svg>
-      );
-    }
-
-    function Av({user,size=36}) {
-      const initials = user && user.initials ? user.initials : ((user && user.display_name ? user.display_name : "??").split(" ").map(x=>x[0]).join("").toUpperCase().slice(0,2) || "??");
-      const color = user && user.avatar_color ? user.avatar_color : "#5ea8ff";
-      return (
-        <div style={{
-          width:size,height:size,borderRadius:"50%",
-          background:"linear-gradient(135deg,"+color+","+color+"88)",
-          display:"flex",alignItems:"center",justifyContent:"center",
-          color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0
-        }}>
-          {initials}
+  return <div onClick={() => onOpen(p)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"16px 18px",cursor:"pointer",marginBottom:10}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <div onClick={(e) => {e.stopPropagation();onProfile(p.author);}} style={{cursor:"pointer"}}><Av user={p.author} size={32}/></div>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+          <span onClick={(e) => {e.stopPropagation();onProfile(p.author);}} style={{fontWeight:600,fontSize:13,cursor:"pointer"}}>{(p.author&&p.author.display_name)||"Anonymous"}</span>
+          <span style={{color:"#5a6a94",fontSize:11}}>{tAgo(p.created_at)}</span>
         </div>
-      );
-    }
+        <span style={{fontSize:11,color:"#6b7db3"}}>{p.category&&p.category.emoji} {p.category&&p.category.name}</span>
+      </div>
+      <Badge label={p.status_label||"Submitted"} color={p.status_color||"#6b7db3"}/>
+    </div>
+    <h3 style={{fontSize:16,fontWeight:700,lineHeight:1.3,margin:"0 0 6px",color:"#f0f4ff"}}>{p.title}</h3>
+    <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:"0 0 10px",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.abstract}</p>
+    {p.tags && p.tags.length > 0 && <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>{p.tags.map((t) => <span key={t} style={{padding:"1px 7px",borderRadius:6,fontSize:10,fontWeight:600,background:"rgba(141,193,255,0.08)",color:"#7da8d4"}}>{t}</span>)}</div>}
+    <div style={{display:"flex",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:10}}>
+      <button onClick={doLike} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:lk?"#ff4d6a":"#5a6a94",fontSize:12,fontWeight:600}}>
+        <HIcon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" s={15} f={lk}/> {lc}
+      </button>
+      <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
+        <HIcon d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" s={15}/> {p.comment_count||0}
+      </span>
+      <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
+        <HIcon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2" s={15}/> {p.review_count||0}
+      </span>
+      <button onClick={(e) => {e.stopPropagation();sSv(!sv);}} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:sv?"#f0a030":"#5a6a94",fontSize:12,fontWeight:600,marginLeft:"auto"}}>
+        <HIcon d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" s={15} f={sv}/>
+      </button>
+    </div>
+  </div>;
+}
 
-    function Badge({label,color}) {
-      return (
-        <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:(color||"#6b7db3")+"15",color:color||"#6b7db3",border:"1px solid "+(color||"#6b7db3")+"30"}}>
-          <span style={{width:5,height:5,borderRadius:"50%",background:color||"#6b7db3"}}/>
-          {label}
-        </span>
-      );
-    }
+/* ── DETAIL ─────────────────────────────────────────────── */
+function Detail({paper,onBack,onProfile,onComment,useApi}) {
+  const p = paper;
+  const [c,sC] = useState("");
+  const [cs,sCs] = useState(p.comments || []);
+  const [loading,sLoading] = useState(false);
 
-    function Card({paper,onOpen,onProfile,onLike,useApi}) {
-      const p = paper;
-      const [lk,sLk] = useState(!!p.user_liked);
-      const [sv,sSv] = useState(!!p.user_bookmarked);
-      const [lc,sLc] = useState(p.like_count || 0);
+  useEffect(() => {
+    if (!useApi || !p.blind_id) return;
+    API.get("/api/submissions/" + p.blind_id).then(function(d){
+      if (d && d.submission && d.submission.comments) sCs(d.submission.comments);
+    });
+  }, [p.blind_id, useApi]);
 
-      const likeClick = (e) => {
-        e.stopPropagation();
-        if (!useApi || !p.blind_id) return;
-        const prevLiked = lk;
-        const prevCount = lc;
-        sLk(!prevLiked);
-        sLc(prevLiked ? Math.max(0, lc - 1) : lc + 1);
-        onLike && onLike(p, prevLiked, prevCount, (ok, likedValue, likeCountValue) => {
-          if (!ok) {
-            sLk(prevLiked);
-            sLc(prevCount);
-          } else {
-            if (typeof likedValue === "boolean") sLk(likedValue);
-            if (typeof likeCountValue === "number") sLc(likeCountValue);
-          }
-        });
-      };
-
-      return (
-        <div onClick={() => onOpen(p)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:"16px 18px",cursor:"pointer",marginBottom:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-            <div onClick={(e)=>{e.stopPropagation();onProfile(p.author);}} style={{cursor:"pointer"}}><Av user={p.author || {}} size={32}/></div>
-            <div style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <span onClick={(e)=>{e.stopPropagation();onProfile(p.author);}} style={{fontWeight:600,fontSize:13,cursor:"pointer"}}>{(p.author && p.author.display_name) || "Anonymous"}</span>
-                <span style={{color:"#5a6a94",fontSize:11}}>{tAgo(p.created_at)}</span>
-              </div>
-              <span style={{fontSize:11,color:"#6b7db3"}}>{p.category && p.category.emoji ? p.category.emoji : "📐"} {p.category && p.category.name ? p.category.name : "Physics"}</span>
-            </div>
-            <Badge label={p.status_label || p.status || "Submitted"} color={p.status_color || "#6b7db3"}/>
-          </div>
-
-          <h3 style={{fontSize:16,fontWeight:700,lineHeight:1.3,margin:"0 0 6px",color:"#f0f4ff"}}>{p.title}</h3>
-          <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:"0 0 10px",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.abstract}</p>
-
-          {p.tags && p.tags.length > 0 && (
-            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
-              {p.tags.map((t) => <span key={t} style={{padding:"1px 7px",borderRadius:6,fontSize:10,fontWeight:600,background:"rgba(141,193,255,0.08)",color:"#7da8d4"}}>{t}</span>)}
-            </div>
-          )}
-
-          <div style={{display:"flex",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:10}}>
-            <button onClick={likeClick} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:useApi?"pointer":"default",color:lk?"#ff4d6a":"#5a6a94",fontSize:12,fontWeight:600}}>
-              <HIcon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" s={15} f={lk}/> {lc}
-            </button>
-
-            <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
-              <HIcon d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" s={15}/> {p.comment_count || 0}
-            </span>
-
-            <span style={{display:"flex",alignItems:"center",gap:4,color:"#5a6a94",fontSize:12,fontWeight:600}}>
-              <HIcon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2" s={15}/> {p.review_count || 0}
-            </span>
-
-            <button onClick={(e)=>{e.stopPropagation();sSv(!sv);}} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:sv?"#f0a030":"#5a6a94",fontSize:12,fontWeight:600,marginLeft:"auto"}}>
-              <HIcon d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" s={15} f={sv}/>
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    function Detail({paper,onBack,onProfile,onRefresh,useApi}) {
-      const [fullPaper,sFullPaper] = useState(paper);
-      const [c,sC] = useState("");
-      const [posting,sPosting] = useState(false);
-
-      useEffect(() => {
-        if (!paper || !paper.blind_id) return;
-        API.get("/api/submissions/" + paper.blind_id).then(function(d){
-          if (d && d.submission) sFullPaper(d.submission);
-        });
-      }, [paper && paper.blind_id]);
-
-      const p = fullPaper || paper;
-      const comments = p.comments || [];
-
-      const post = () => {
-        if (!c.trim() || !useApi || !p.blind_id) return;
-        sPosting(true);
-        API.post("/api/submissions/" + p.blind_id + "/comments", {body:c, comment_type:"note"}).then(function(d){
-          sPosting(false);
-          if (d && d.comment) {
-            sFullPaper({
-              ...p,
-              comments:[...comments,d.comment]
-            });
-            sC("");
-            onRefresh && onRefresh();
-          }
-        }).catch(function(){ sPosting(false); });
-      };
-
-      return (
-        <div style={{maxWidth:640,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
-
-          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:20,marginBottom:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-              <div onClick={() => onProfile(p.author)} style={{cursor:"pointer"}}><Av user={p.author || {}} size={40}/></div>
-              <div style={{flex:1}}>
-                <span onClick={() => onProfile(p.author)} style={{fontWeight:700,fontSize:14,cursor:"pointer"}}>{(p.author && p.author.display_name) || "Anonymous"}</span>
-                <div style={{fontSize:11,color:"#5a6a94"}}>{p.category && p.category.emoji ? p.category.emoji : "📐"} {p.category && p.category.name ? p.category.name : "Physics"} &middot; {fDate(p.created_at)}</div>
-              </div>
-              <Badge label={p.status_label || p.status || "Submitted"} color={p.status_color || "#6b7db3"}/>
-            </div>
-
-            <h1 style={{fontSize:20,fontWeight:800,lineHeight:1.3,margin:"0 0 10px"}}>{p.title}</h1>
-            <div style={{fontSize:10,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Abstract</div>
-            <p style={{fontSize:14,lineHeight:1.6,color:"#a0aed0",marginBottom:16}}>{p.abstract}</p>
-
-            {p.body_text && (
-              <>
-                <div style={{fontSize:10,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Paper</div>
-                <div style={{fontSize:13,lineHeight:1.7,color:"#c7d2f0",whiteSpace:"pre-wrap"}}>{p.body_text}</div>
-              </>
-            )}
-          </div>
-
-          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
-            <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Discussion ({comments.length})</h3>
-
-            {comments.map((x) => (
-              <div key={x.id} style={{display:"flex",gap:10,marginBottom:14,paddingBottom:14,borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
-                <Av user={x.author || {}} size={28}/>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                    <span style={{fontWeight:600,fontSize:12}}>{(x.author && x.author.display_name) || "User"}</span>
-                    <span style={{fontSize:10,color:"#4a5a7e"}}>{tAgo(x.created_at)}</span>
-                    {x.comment_type==="encouragement" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(74,222,128,0.12)",color:"#4ade80",fontWeight:600}}>encouraging</span>}
-                    {x.comment_type==="question" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:600}}>question</span>}
-                  </div>
-                  <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:0}}>{x.body}</p>
-                </div>
-              </div>
-            ))}
-
-            {useApi && (
-              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-                <Av user={_usr} size={28}/>
-                <div style={{flex:1,position:"relative"}}>
-                  <textarea value={c} onChange={(e)=>sC(e.target.value)} placeholder="Join the discussion..." onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();post();}}} style={{width:"100%",padding:"9px 40px 9px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:13,resize:"none",minHeight:38,fontFamily:"inherit",boxSizing:"border-box"}}/>
-                  <button onClick={post} disabled={posting || !c.trim()} style={{position:"absolute",right:6,bottom:6,background:c.trim()?"#5ea8ff":"transparent",border:"none",borderRadius:6,padding:5,cursor:c.trim()?"pointer":"default",color:c.trim()?"#071120":"#3a4a6e"}}>&#9658;</button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    function Submit({onBack,onSubmitted,useApi}) {
-      const [t,sT]=useState("");
-      const [a,sA]=useState("");
-      const [b,sB]=useState("");
-      const [cat,sCat]=useState("");
-      const [done,sD]=useState(false);
-      const [err,sErr]=useState("");
-      const [loading,sLoading]=useState(false);
-
-      const submit = () => {
-        if (!useApi) {
-          sErr("Sign in to submit.");
-          return;
-        }
-        if (!t || !a || !b || !cat) return;
-
-        sLoading(true);
-        sErr("");
-        API.post("/api/submissions", {
-          title:t,
-          abstract:a,
-          body_text:b,
-          category_id:+cat,
-          tags:""
-        }).then(function(d){
-          sLoading(false);
-          if (d && d.submission) {
-            sD(true);
-            onSubmitted && onSubmitted();
-          } else {
-            sErr(d.error || "Submission failed");
-          }
-        }).catch(function(){
-          sLoading(false);
-          sErr("Network error");
-        });
-      };
-
-      if (done) {
-        return (
-          <div style={{maxWidth:480,margin:"0 auto",textAlign:"center",paddingTop:40}}>
-            <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(74,222,128,0.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",border:"2px solid rgba(74,222,128,0.3)",color:"#4ade80",fontSize:24}}>&#10003;</div>
-            <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 8px"}}>Submitted!</h2>
-            <p style={{fontSize:14,color:"#8a9ac4",margin:"0 0 20px"}}>Your work has been sent to Discovery.</p>
-            <button onClick={onBack} style={{padding:"10px 24px",borderRadius:10,background:"#5ea8ff",border:"none",color:"#071120",fontWeight:700,fontSize:13,cursor:"pointer"}}>Back</button>
-          </div>
-        );
-      }
-
-      return (
-        <div style={{maxWidth:580,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
-          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:22}}>
-            <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Share your work</h2>
-            <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 16px"}}>No credentials required. If you investigated something, this is the place.</p>
-
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <input value={t} onChange={(e)=>sT(e.target.value)} placeholder="Title — what did you investigate?" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
-              <select value={cat} onChange={(e)=>sCat(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:cat?"#edf1ff":"#3a4a6e",fontSize:12,fontFamily:"inherit",boxSizing:"border-box"}}>
-                <option value="">Category</option>
-                {CATS.map((x)=><option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
-              </select>
-              <textarea value={a} onChange={(e)=>sA(e.target.value)} rows={3} placeholder="Abstract — summarize your main idea" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
-              <textarea value={b} onChange={(e)=>sB(e.target.value)} rows={10} placeholder="Full paper text" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
-              {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
-              <button onClick={submit} disabled={loading||!t||!a||!b||!cat} style={{padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:t&&a&&b&&cat?"pointer":"not-allowed",background:t&&a&&b&&cat?"linear-gradient(135deg,#5ea8ff,#3d8be0)":"rgba(255,255,255,0.04)",color:t&&a&&b&&cat?"#071120":"#3a4a6e"}}>{loading?"Submitting...":"Submit for review"}</button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    function Profile({user,onBack,onOpen,isSelf,onLogout,useApi,onProfileSaved}) {
-      const u = user || _usr;
-      const [papers,sPapers] = useState([]);
-      const [editing,sEditing] = useState(false);
-      const [displayName,sDisplayName] = useState(u.display_name || "");
-      const [bio,sBio] = useState(u.bio || "");
-      const [saving,sSaving] = useState(false);
-
-      useEffect(() => {
-        if (!u || !u.id) return;
-        API.get("/api/users/" + u.id).then(function(d){
-          if (d && d.user) {
-            sPapers(d.user.papers || []);
-            if (!editing) {
-              sDisplayName(d.user.display_name || "");
-              sBio(d.user.bio || "");
-            }
-          }
-        });
-      }, [u && u.id]);
-
-      const saveProfile = () => {
-        if (!useApi) return;
-        sSaving(true);
-        API.post("/api/auth/profile", {display_name:displayName, bio:bio}).then(function(d){
-          sSaving(false);
-          if (d && d.user) {
-            _usr = d.user;
-            sEditing(false);
-            onProfileSaved && onProfileSaved(d.user);
-          }
-        }).catch(function(){ sSaving(false); });
-      };
-
-      return (
-        <div style={{maxWidth:580,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
-
-          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:24,textAlign:"center",marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Av user={u} size={64}/></div>
-
-            {!editing ? (
-              <>
-                <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>{u.display_name}</h2>
-                <p style={{fontSize:12,color:"#5a6a94",margin:"0 0 8px"}}>{u.email || ""}</p>
-                <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{u.bio || ""}</p>
-                <div style={{display:"flex",justifyContent:"center",gap:28,marginBottom:14}}>
-                  <div><div style={{fontSize:20,fontWeight:800}}>{u.paper_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Papers</div></div>
-                  <div><div style={{fontSize:20,fontWeight:800}}>{u.review_count || 0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Reviews</div></div>
-                  <div><div style={{fontSize:20,fontWeight:800,color:"#5ea8ff"}}>{typeof u.reputation_score === "number" ? u.reputation_score.toFixed(1) : "0.0"}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Rep</div></div>
-                </div>
-
-                {isSelf && useApi && (
-                  <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:10}}>
-                    <button onClick={()=>sEditing(true)} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(94,168,255,0.25)",background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:700,fontSize:12,cursor:"pointer"}}>Edit Profile</button>
-                    <button onClick={onLogout} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.08)",color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}}>Sign Out</button>
-                  </div>
-                )}
-
-                {u.role === "admin" && <div style={{fontSize:10,color:"#f0a030",fontWeight:700}}>Admin</div>}
-              </>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                <input value={displayName} onChange={(e)=>sDisplayName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
-                <textarea value={bio} onChange={(e)=>sBio(e.target.value)} rows={4} placeholder="Bio" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
-                <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-                  <button onClick={saveProfile} disabled={saving} style={{padding:"8px 18px",borderRadius:8,border:"none",background:"#5ea8ff",color:"#071120",fontWeight:700,fontSize:12,cursor:"pointer"}}>{saving ? "Saving..." : "Save"}</button>
-                  <button onClick={()=>sEditing(false)} style={{padding:"8px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#5a6a94",fontWeight:700,fontSize:12,cursor:"pointer"}}>Cancel</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {papers.length > 0 && papers.map((p) => <Card key={p.id} paper={p} onOpen={onOpen} onProfile={()=>{}} useApi={false}/>)}
-        </div>
-      );
-    }
-
-    function Notifs({onBack,items}) {
-      const list = items || [];
-      return (
-        <div style={{maxWidth:580,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
-          <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 14px"}}>Notifications</h2>
-
-          {list.length === 0 && <div style={{padding:"20px 0",color:"#5a6a94",fontSize:13}}>No notifications.</div>}
-
-          {list.map((n) => (
-            <div key={n.id} style={{padding:"12px 16px",borderRadius:12,background:n.is_read?"rgba(255,255,255,0.02)":"rgba(94,168,255,0.06)",border:"1px solid "+(n.is_read?"rgba(255,255,255,0.05)":"rgba(94,168,255,0.12)"),marginBottom:8}}>
-              <div style={{fontSize:13,fontWeight:600}}>{n.title}</div>
-              {n.body && <div style={{fontSize:12,color:"#6b7db3",marginTop:2}}>{n.body}</div>}
-              {n.created_at && <div style={{fontSize:10,color:"#4a5a7e",marginTop:5}}>{tAgo(n.created_at)}</div>}
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    function ToolHub({onBack,onOpen}) {
-      const tools = [
-        {id:"desk_review",title:"AI Desk Review",desc:"8-criterion desk review for manuscript text",emoji:"✦",color:"#38bdf8"},
-        {id:"ocm",title:"Stability Analysis",desc:"Contraction-rate classification for numerical time series",emoji:"📊",color:"#5ea8ff"},
-        {id:"er",title:"Topology Mapping",desc:"Coherence graph and bridge detection from a numeric series",emoji:"🌉",color:"#a78bfa"},
-        {id:"icm",title:"Invariant Detection",desc:"Disruption morphology and admissibility analysis",emoji:"🔬",color:"#f0a030"},
-        {id:"clm",title:"Coherence Field Lab",desc:"Field coherence simulation with uploaded forcing",emoji:"ψ",color:"#c084fc"}
-      ];
-
-      return (
-        <div style={{maxWidth:600,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
-          <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Research Tools</h2>
-          <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Five analysis engines, fully wired.</p>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {tools.map((t) => (
-              <div key={t.id} onClick={() => onOpen(t)} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:40,height:40,borderRadius:10,background:t.color+"15",border:"1px solid "+t.color+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{t.emoji}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:14}}>{t.title}</div>
-                  <div style={{fontSize:12,color:"#6b7db3"}}>{t.desc}</div>
-                </div>
-                <span style={{color:"#3a4a6e",fontSize:18}}>&#8250;</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    function ToolRunner({tool,onBack,useApi}) {
-      const [input,sInput] = useState("");
-      const [file,sFile] = useState(null);
-      const [loading,sLoading] = useState(false);
-      const [result,sResult] = useState(null);
-
-      const run = async () => {
-        if (!useApi) {
-          sResult({error:"Sign in to use the research tools."});
-          return;
-        }
-        sLoading(true);
-        const fd = new FormData();
-        fd.append("tool", tool.id);
-        fd.append("input", input || "");
-        if (file) fd.append("file", file);
-        const res = await postForm("/api/tools/run", fd);
+  const post = () => {
+    if (!c.trim()) return;
+    if (onComment && useApi && p.blind_id) {
+      sLoading(true);
+      onComment(p, c.trim()).then(function(d){
         sLoading(false);
-        sResult(res);
-      };
-
-      return (
-        <div style={{maxWidth:620,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
-          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
-            <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 6px"}}>{tool.title}</h2>
-            <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{tool.desc}</p>
-
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <textarea value={input} onChange={(e)=>sInput(e.target.value)} rows={8} placeholder={tool.id==="desk_review" ? "Paste manuscript text here..." : "Paste numbers, CSV text, or a short description..."} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
-              <label style={{padding:"12px 14px",borderRadius:10,border:"1px dashed rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.02)",fontSize:12,color:"#8a9ac4",cursor:"pointer"}}>
-                {file ? file.name : "Attach a file (CSV, TXT, TEX, PDF)"}
-                <input type="file" style={{display:"none"}} onChange={(e)=>sFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
-              </label>
-              <button onClick={run} disabled={loading} style={{padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading ? "Running..." : "Run Analysis"}</button>
-            </div>
-
-            {result && (
-              <div style={{marginTop:16,padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
-                {result.error ? (
-                  <div style={{color:"#ef4444",fontSize:13}}>{result.error}</div>
-                ) : (
-                  <>
-                    {result.classification && <div style={{marginBottom:10}}><Badge label={result.classification} color="#5ea8ff" /></div>}
-                    {result.summary && <div style={{fontSize:13,color:"#c7d2f0",lineHeight:1.6,marginBottom:10}}>{result.summary}</div>}
-                    {result.details && (
-                      <pre style={{whiteSpace:"pre-wrap",wordBreak:"break-word",fontSize:12,lineHeight:1.5,color:"#8a9ac4",fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace"}}>
-{typeof result.details === "string" ? result.details : JSON.stringify(result.details, null, 2)}
-                      </pre>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      );
+        if (d && d.comment) sCs([...cs, d.comment]);
+        else sCs([...cs,{id:Date.now(),author:_usr,comment_type:"note",body:c,like_count:0,created_at:new Date().toISOString()}]);
+        sC("");
+      }).catch(function(){
+        sLoading(false);
+      });
+      return;
     }
+    sCs([...cs,{id:Date.now(),author:_usr,comment_type:"note",body:c,like_count:0,created_at:new Date().toISOString()}]);
+    sC("");
+  };
 
-    function AdminDash({onBack}) {
-      const [tab,sTab] = useState("submissions");
-      const [subs,sSubs] = useState([]);
-      const [users,sUsers] = useState([]);
-      const [loading,sLoading] = useState(false);
-      const [msg,sMsg] = useState("");
-
-      const flash = (text) => {
-        sMsg(text);
-        setTimeout(()=>sMsg(""), 2200);
-      };
-
-      const load = useCallback(() => {
-        sLoading(true);
-        if (tab === "submissions") {
-          API.get("/api/admin/submissions").then(function(d){
-            sSubs(d.submissions || []);
-            sLoading(false);
-          }).catch(function(){ sLoading(false); });
-        } else {
-          API.get("/api/admin/users").then(function(d){
-            sUsers(d.users || []);
-            sLoading(false);
-          }).catch(function(){ sLoading(false); });
-        }
-      }, [tab]);
-
-      useEffect(() => { load(); }, [load]);
-
-      const setStatus = (id, status) => {
-        API.post("/api/admin/submissions/" + id + "/status", {status}).then(function(d){
-          if (d && d.ok) {
-            flash("Updated");
-            load();
-          } else {
-            flash(d.error || "Failed");
-          }
-        });
-      };
-
-      const deleteSubmission = (id) => {
-        if (!confirm("Delete this submission?")) return;
-        const xhr = new XMLHttpRequest();
-        xhr.open("DELETE", "/api/admin/submissions/" + id, true);
-        xhr.withCredentials = true;
-        xhr.onload = function(){
-          let d = {};
-          try { d = JSON.parse(xhr.responseText); } catch(e) {}
-          if (xhr.status >= 200 && xhr.status < 300 && d.ok) {
-            flash("Deleted");
-            load();
-          } else {
-            flash(d.error || "Failed");
-          }
-        };
-        xhr.onerror = function(){ flash("Network error"); };
-        xhr.send();
-      };
-
-      const setRole = (id, role) => {
-        API.post("/api/admin/users/" + id + "/role", {role}).then(function(d){
-          if (d && d.ok) {
-            flash("Updated");
-            load();
-          } else {
-            flash(d.error || "Failed");
-          }
-        });
-      };
-
-      const banUser = (id, ban) => {
-        API.post("/api/admin/users/" + id + (ban ? "/ban" : "/unban"), {}).then(function(d){
-          if (d && d.ok) {
-            flash("Updated");
-            load();
-          } else {
-            flash(d.error || "Failed");
-          }
-        });
-      };
-
-      const deleteUser = (id) => {
-        if (!confirm("Delete this user?")) return;
-        const xhr = new XMLHttpRequest();
-        xhr.open("DELETE", "/api/admin/users/" + id, true);
-        xhr.withCredentials = true;
-        xhr.onload = function(){
-          let d = {};
-          try { d = JSON.parse(xhr.responseText); } catch(e) {}
-          if (xhr.status >= 200 && xhr.status < 300 && d.ok) {
-            flash("Deleted");
-            load();
-          } else {
-            flash(d.error || "Failed");
-          }
-        };
-        xhr.onerror = function(){ flash("Network error"); };
-        xhr.send();
-      };
-
-      const resetDb = () => {
-        if (!confirm("This will delete all non-admin users and all submissions. Continue?")) return;
-        API.post("/api/admin/reset-db", {}).then(function(d){
-          if (d && d.ok) {
-            flash("Database reset");
-            load();
-          } else {
-            flash(d.error || "Failed");
-          }
-        });
-      };
-
-      return (
-        <div style={{maxWidth:720,margin:"0 auto"}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:12}}>&#8592; Back</button>
-          <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Admin Dashboard</h2>
-          <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>Submissions, users, moderation, and reset controls.</p>
-
-          {msg && <div style={{marginBottom:12,padding:"10px 12px",borderRadius:10,background:"rgba(94,168,255,0.08)",border:"1px solid rgba(94,168,255,0.15)",fontSize:12,color:"#7da8d4"}}>{msg}</div>}
-
-          <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:12}}>
-            <button onClick={() => sTab("submissions")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:tab==="submissions"?"rgba(94,168,255,0.12)":"transparent",color:tab==="submissions"?"#5ea8ff":"#4a5a7e"}}>Submissions</button>
-            <button onClick={() => sTab("users")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:tab==="users"?"rgba(94,168,255,0.12)":"transparent",color:tab==="users"?"#5ea8ff":"#4a5a7e"}}>Users</button>
-          </div>
-
-          {loading && <div style={{padding:"20px 0",color:"#5a6a94",fontSize:13}}>Loading…</div>}
-
-          {!loading && tab === "submissions" && (
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {subs.length === 0 && <div style={{color:"#5a6a94",fontSize:13}}>No submissions.</div>}
-              {subs.map((s) => (
-                <div key={s.id} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:700,fontSize:14}}>{s.title}</div>
-                      <div style={{fontSize:11,color:"#6b7db3"}}>{s.author_name || "Anonymous"} · {tAgo(s.created_at)}</div>
-                    </div>
-                    <Badge label={s.status_label || s.status} color={s.status_color || "#6b7db3"} />
-                  </div>
-                  <div style={{fontSize:12,color:"#8a9ac4",lineHeight:1.5,marginBottom:10}}>{s.abstract || ""}</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <button onClick={() => setStatus(s.id, "published")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(74,222,128,0.14)",color:"#4ade80",fontWeight:700,fontSize:11,cursor:"pointer"}}>Publish</button>
-                    <button onClick={() => setStatus(s.id, "under_review")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(240,160,48,0.14)",color:"#f0a030",fontWeight:700,fontSize:11,cursor:"pointer"}}>Review</button>
-                    <button onClick={() => setStatus(s.id, "desk_returned")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(94,168,255,0.14)",color:"#5ea8ff",fontWeight:700,fontSize:11,cursor:"pointer"}}>Return</button>
-                    <button onClick={() => setStatus(s.id, "declined")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(239,68,68,0.14)",color:"#ef4444",fontWeight:700,fontSize:11,cursor:"pointer"}}>Decline</button>
-                    <button onClick={() => deleteSubmission(s.id)} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(255,255,255,0.06)",color:"#c7d2f0",fontWeight:700,fontSize:11,cursor:"pointer"}}>Delete</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!loading && tab === "users" && (
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {users.length === 0 && <div style={{color:"#5a6a94",fontSize:13}}>No users.</div>}
-              {users.map((u) => (
-                <div key={u.id} style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <Av user={u} size={34} />
-                      <div>
-                        <div style={{fontWeight:700,fontSize:14}}>{u.display_name}</div>
-                        <div style={{fontSize:11,color:"#6b7db3"}}>{u.email} · {u.role}{u.is_banned ? " · banned" : ""}</div>
-                      </div>
-                    </div>
-                    <div style={{fontSize:11,color:"#5a6a94"}}>{u.paper_count || 0} papers</div>
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <button onClick={() => setRole(u.id, u.role === "admin" ? "member" : "admin")} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(94,168,255,0.14)",color:"#5ea8ff",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u.role === "admin" ? "Demote" : "Promote"}</button>
-                    <button onClick={() => banUser(u.id, !u.is_banned)} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(240,160,48,0.14)",color:"#f0a030",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u.is_banned ? "Unban" : "Ban"}</button>
-                    <button onClick={() => deleteUser(u.id)} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"rgba(255,255,255,0.06)",color:"#c7d2f0",fontWeight:700,fontSize:11,cursor:"pointer"}}>Delete</button>
-                  </div>
-                </div>
-              ))}
-
-              <button onClick={resetDb} style={{marginTop:4,padding:"10px 14px",borderRadius:10,border:"1px solid rgba(239,68,68,0.18)",background:"rgba(239,68,68,0.08)",color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}}>Reset Database</button>
-            </div>
-          )}
+  return <div style={{maxWidth:640,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:20,marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+        <div onClick={() => onProfile(p.author)} style={{cursor:"pointer"}}><Av user={p.author} size={40}/></div>
+        <div style={{flex:1}}>
+          <span onClick={() => onProfile(p.author)} style={{fontWeight:700,fontSize:14,cursor:"pointer"}}>{(p.author&&p.author.display_name)||"Anonymous"}</span>
+          <div style={{fontSize:11,color:"#5a6a94"}}>{p.category&&p.category.emoji} {p.category&&p.category.name} &middot; {fDate(p.created_at)}</div>
         </div>
-      );
-    }
-
-    function AuthScreen({onAuth}) {
-      const [mode,sMode] = useState("login");
-      const [email,sEmail] = useState("");
-      const [name,sName] = useState("");
-      const [pw,sPw] = useState("");
-      const [err,sErr] = useState("");
-      const [loading,sLoading] = useState(false);
-
-      const submit = () => {
-        sErr("");
-        sLoading(true);
-
-        const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-        const body = mode === "login"
-          ? { email: email.trim(), password: pw }
-          : { email: email.trim(), display_name: name.trim(), password: pw };
-
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", url, true);
-        xhr.withCredentials = true;
-        xhr.setRequestHeader("Content-Type", "application/json");
-
-        xhr.onload = function() {
-          sLoading(false);
-          let res = {};
-          try { res = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch(e) {}
-
-          if (xhr.status >= 200 && xhr.status < 300 && res.user) {
-            _usr = res.user;
-            _usr.initials = _usr.initials || (_usr.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
-            onAuth(_usr, true);
-            return;
-          }
-
-          let msg = res.error || ("Error (" + xhr.status + ")");
-          if (res.detail) msg += ": " + res.detail;
-          sErr(msg);
-        };
-
-        xhr.onerror = function() {
-          sLoading(false);
-          sErr("Network error");
-        };
-
-        xhr.send(JSON.stringify(body));
-      };
-
-      return (
-        <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
-          <div style={{width:52,height:52,borderRadius:13,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",marginBottom:20}}>&#x29C7;</div>
-          <h1 style={{fontSize:24,fontWeight:800,marginBottom:4}}>The Journal</h1>
-          <p style={{fontSize:13,color:"#5ea8ff",marginBottom:24}}>Independent Physics Platform</p>
-
-          <div style={{width:"100%",maxWidth:360}}>
-            <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:16}}>
-              <button onClick={() => sMode("login")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="login"?"rgba(94,168,255,0.12)":"transparent",color:mode==="login"?"#5ea8ff":"#4a5a7e"}}>Sign In</button>
-              <button onClick={() => sMode("register")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:mode==="register"?"rgba(94,168,255,0.12)":"transparent",color:mode==="register"?"#5ea8ff":"#4a5a7e"}}>Create Account</button>
-            </div>
-
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {mode==="register" && <input value={name} onChange={(e)=>sName(e.target.value)} placeholder="Display name" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>}
-              <input value={email} onChange={(e)=>sEmail(e.target.value)} placeholder="Email" type="email" style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
-              <input value={pw} onChange={(e)=>sPw(e.target.value)} placeholder="Password" type="password" onKeyDown={(e)=>{if(e.key==="Enter") submit();}} style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,boxSizing:"border-box"}}/>
-              {err && <div style={{fontSize:12,color:"#ef4444",padding:"6px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
-              <button onClick={submit} disabled={loading||!email||!pw||(mode==="register"&&!name)} style={{padding:"12px",borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",color:"#071120"}}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
-            </div>
-
-            <button onClick={() => onAuth(_usr, false)} style={{display:"block",width:"100%",marginTop:12,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#4a5a7e",fontSize:12,fontWeight:600,cursor:"pointer"}}>Continue as guest</button>
-            <p style={{fontSize:11,color:"#3a4a6e",textAlign:"center",marginTop:16,lineHeight:1.5}}>No degree required. No institution needed. Just curiosity.</p>
+        <Badge label={p.status_label||"Submitted"} color={p.status_color||"#6b7db3"}/>
+      </div>
+      <h1 style={{fontSize:20,fontWeight:800,lineHeight:1.3,margin:"0 0 10px"}}>{p.title}</h1>
+      <div style={{fontSize:10,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Abstract</div>
+      <p style={{fontSize:14,lineHeight:1.6,color:"#a0aed0",margin:0}}>{p.abstract}</p>
+    </div>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:18}}>
+      <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Discussion ({cs.length})</h3>
+      {cs.map((x) => <div key={x.id} style={{display:"flex",gap:10,marginBottom:14,paddingBottom:14,borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+        <Av user={x.author} size={28}/>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+            <span style={{fontWeight:600,fontSize:12}}>{x.author&&x.author.display_name}</span>
+            <span style={{fontSize:10,color:"#4a5a7e"}}>{tAgo(x.created_at)}</span>
+            {x.comment_type==="encouragement" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(74,222,128,0.12)",color:"#4ade80",fontWeight:600}}>encouraging</span>}
+            {x.comment_type==="question" && <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:600}}>question</span>}
           </div>
+          <p style={{fontSize:13,lineHeight:1.5,color:"#8a9ac4",margin:0}}>{x.body}</p>
         </div>
-      );
-    }
+      </div>)}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <Av user={_usr} size={28}/>
+        <div style={{flex:1,position:"relative"}}>
+          <textarea value={c} onChange={(e) => sC(e.target.value)} placeholder="Join the discussion..." onKeyDown={(e) => {if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();post();}}} style={{width:"100%",padding:"9px 40px 9px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:13,resize:"none",minHeight:38,fontFamily:"inherit",boxSizing:"border-box"}}/>
+          <button onClick={post} style={{position:"absolute",right:6,bottom:6,background:c.trim()?"#5ea8ff":"transparent",border:"none",borderRadius:6,padding:5,cursor:"pointer",color:c.trim()?"#071120":"#3a4a6e"}}>{loading?"…":"▶"}</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
 
-    function App() {
-      const [authed,sAuthed] = useState(false);
-      const [v,sV] = useState("feed");
-      const [ft,sFt] = useState("discovery");
-      const [cf,sCf] = useState(null);
-      const [q,sQ] = useState("");
-      const [sel,sSel] = useState(null);
-      const [toolSel,sToolSel] = useState(null);
-      const [ns,sNs] = useState([]);
-      const [papers,sPapers] = useState([]);
-      const [pubPapers,sPub] = useState([]);
-      const [notifs,sNotifs] = useState([]);
-      const [useApi,sUseApi] = useState(false);
-      const [feedLoading,sFeedLoading] = useState(false);
+/* ── SUBMIT ─────────────────────────────────────────────── */
+function Submit({onBack,onSubmit,useApi}) {
+  const [t,sT]=useState("");
+  const [a,sA]=useState("");
+  const [b,sB]=useState("");
+  const [cat,sCat]=useState("");
+  const [done,sD]=useState(false);
+  const [err,sErr]=useState("");
+  const [loading,sLoading]=useState(false);
 
-      useEffect(() => {
-        API.get("/api/auth/me").then(function(d){
-          if (d && d.user) {
-            _usr = d.user;
-            _usr.initials = _usr.initials || (_usr.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-            _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
-            sAuthed(true);
-            sUseApi(true);
-          }
-        });
-      }, []);
-
-      useEffect(() => {
-        if (!authed) return;
-        if (!useApi) return;
-        API.get("/api/notifications").then(function(d){
-          if (d && d.notifications) sNotifs(d.notifications);
-        });
-      }, [authed, useApi]);
-
-      const loadFeed = useCallback((tab, categoryId, searchQ) => {
-        sFeedLoading(true);
-        let url = tab === "published" ? "/api/feed/published" : "/api/feed/discovery";
-        const params = [];
-        if (categoryId) params.push("category_id=" + encodeURIComponent(categoryId));
-        if (searchQ && searchQ.trim()) params.push("q=" + encodeURIComponent(searchQ.trim()));
-        if (params.length) url += "?" + params.join("&");
-
-        API.get(url).then(function(d){
-          const mapped = (d && d.papers ? d.papers : []).map(function(p){
-            p.comments = p.comments || [];
-            p.author = p.author || _usr;
-            p.author.initials = p.author.initials || (p.author.display_name || "??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-            p.author.avatar_color = p.author.avatar_color || "#5ea8ff";
-            p.category = p.category || {id:0,name:"Physics",emoji:"📐"};
-            p.tags = p.tags || [];
-            return p;
-          });
-          if (tab === "published") sPub(mapped);
-          else sPapers(mapped);
-          sFeedLoading(false);
-        }).catch(function(){
-          sFeedLoading(false);
-        });
-      }, []);
-
-      useEffect(() => {
-        if (authed) loadFeed(ft, cf, q);
-      }, [authed, ft, cf]);
-
-      const unr = notifs.filter((n) => !n.is_read).length;
-
-      const push = (nv,d) => {
-        sNs((s) => [...s,{v,ft,sel,cf,q,toolSel}]);
-        if (nv==="paper" || nv==="profile") {
-          sV(nv);
-          sSel(d);
-        } else if (nv==="toolrun") {
-          sV(nv);
-          sToolSel(d);
-        } else {
-          sV(nv);
-        }
-      };
-
-      const pop = () => {
-        const p = ns[ns.length-1];
-        if (p) {
-          sNs((s)=>s.slice(0,-1));
-          sV(p.v);
-          sFt(p.ft);
-          sSel(p.sel);
-          sCf(p.cf);
-          sQ(p.q);
-          sToolSel(p.toolSel);
-        } else {
-          sV("feed");
-        }
-      };
-
-      const onAuth = (u, isRealAuth) => {
-        _usr = u;
-        _usr.initials = _usr.initials || (_usr.display_name||"??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-        _usr.avatar_color = _usr.avatar_color || "#5ea8ff";
-        sAuthed(true);
-        sUseApi(!!isRealAuth);
-      };
-
-      const onLogout = () => {
-        API.post("/api/auth/logout", {}).then(function(){
-          _usr = {
-            id:1,email:"guest",display_name:"Guest",initials:"GU",bio:"",reputation_score:0,
-            paper_count:0,review_count:0,follower_count:0,avatar_color:"#5ea8ff",joined:null,role:"guest"
-          };
-          sAuthed(false);
-          sUseApi(false);
-          sPapers([]);
-          sPub([]);
-          sNotifs([]);
-          sV("feed");
-          sFt("discovery");
-          sSel(null);
-          sToolSel(null);
-          sNs([]);
-        });
-      };
-
-      const handleLike = (paper, prevLiked, prevCount, done) => {
-        if (!useApi || !paper.blind_id) {
-          done && done(false);
+  const submit = () => {
+    if(!(t&&a&&b&&cat)) return;
+    sErr("");
+    if (onSubmit) {
+      sLoading(true);
+      Promise.resolve(onSubmit(t,a,b,cat)).then(function(res){
+        sLoading(false);
+        if (res && res.error) {
+          sErr(res.error);
           return;
         }
-        API.post("/api/submissions/" + paper.blind_id + "/like", {}).then(function(d){
-          if (d && typeof d.liked === "boolean") {
-            const count = typeof d.like_count === "number" ? d.like_count : (d.liked ? prevCount + 1 : Math.max(0, prevCount - 1));
-            done && done(true, d.liked, count);
-            if (ft === "published") {
-              sPub(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:count} : p));
-            } else {
-              sPapers(prev => prev.map(p => p.blind_id === paper.blind_id ? {...p, user_liked:d.liked, like_count:count} : p));
-            }
-          } else {
-            done && done(false);
-          }
-        }).catch(function(){ done && done(false); });
-      };
-
-      const all = ft==="published" ? pubPapers : papers;
-      const filt = all.filter((p) => {
-        if (cf && p.category && p.category.id !== cf) return false;
-        if (q) {
-          const s = q.toLowerCase();
-          return (p.title||"").toLowerCase().includes(s) || (p.abstract||"").toLowerCase().includes(s);
-        }
-        return true;
+        sD(true);
+      }).catch(function(e){
+        sLoading(false);
+        sErr((e&&e.message)||"Submission failed");
       });
-
-      if (!authed) return <AuthScreen onAuth={onAuth} />;
-
-      return (
-        <div style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(180deg,#080c18,#0d1225 30%,#0a0f1e)",color:"#edf1ff",fontFamily:"-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"}}>
-          <header style={{position:"sticky",top:0,zIndex:50,background:"rgba(8,12,24,0.92)",backdropFilter:"blur(16px)",borderBottom:"1px solid rgba(255,255,255,0.06)",paddingTop:"env(safe-area-inset-top)"}}>
-            <div style={{maxWidth:680,margin:"0 auto",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div onClick={() => {sV("feed");sFt("discovery");sNs([]);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:28,height:28,borderRadius:7,background:"linear-gradient(135deg,#5ea8ff,#3d70b8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800}}>&#x29C7;</div>
-                <span style={{fontWeight:800,fontSize:15}}>The Journal</span>
-              </div>
-
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <button onClick={() => push("submit")} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:"linear-gradient(135deg,#5ea8ff,#3d8be0)",border:"none",color:"#071120",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Submit</button>
-                <button onClick={() => push("notifs")} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#5a6a94",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
-                  <HIcon d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" s={15}/>
-                  {unr > 0 && <span style={{position:"absolute",top:5,right:5,width:6,height:6,borderRadius:"50%",background:"#ff4d6a"}}/>}
-                </button>
-                <div onClick={() => push("profile", _usr)} style={{cursor:"pointer"}}><Av user={_usr} size={30}/></div>
-              </div>
-            </div>
-          </header>
-
-          <main style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
-            {v==="feed" && (
-              <div style={{animation:"fadeIn .25s"}}>
-                <div style={{marginBottom:14,padding:"14px 16px",borderRadius:12,background:"linear-gradient(135deg,rgba(94,168,255,0.05),rgba(94,168,255,0.02))",border:"1px solid rgba(94,168,255,0.08)"}}>
-                  <p style={{fontSize:13,color:"#8a9ac4",margin:0,lineHeight:1.5}}><span style={{color:"#5ea8ff",fontWeight:700}}>Welcome.</span> No degree required. Just honest investigation and community feedback.</p>
-                </div>
-
-                <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:12}}>
-                  <button onClick={() => sFt("discovery")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:ft==="discovery"?"rgba(94,168,255,0.12)":"transparent",color:ft==="discovery"?"#5ea8ff":"#4a5a7e"}}>Discovery</button>
-                  <button onClick={() => sFt("published")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:ft==="published"?"rgba(94,168,255,0.12)":"transparent",color:ft==="published"?"#5ea8ff":"#4a5a7e"}}>Published</button>
-                </div>
-
-                <div style={{position:"relative",marginBottom:10}}>
-                  <input value={q} onChange={(e)=>sQ(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter") loadFeed(ft, cf, e.target.value);}} placeholder="Search papers..." style={{width:"100%",padding:"9px 12px 9px 32px",borderRadius:10,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
-                  <div style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#3a4a6e",pointerEvents:"none"}}>
-                    <HIcon d="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" s={14}/>
-                  </div>
-                </div>
-
-                <div style={{display:"flex",gap:5,overflowX:"auto",marginBottom:12,WebkitOverflowScrolling:"touch"}}>
-                  <button onClick={() => sCf(null)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,background:!cf?"rgba(94,168,255,0.1)":"transparent",borderColor:!cf?"rgba(94,168,255,0.2)":"rgba(255,255,255,0.06)",color:!cf?"#5ea8ff":"#4a5a7e"}}>All</button>
-                  {CATS.map((c) => <button key={c.id} onClick={() => sCf(c.id)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,background:cf===c.id?"rgba(94,168,255,0.1)":"transparent",borderColor:cf===c.id?"rgba(94,168,255,0.2)":"rgba(255,255,255,0.06)",color:cf===c.id?"#5ea8ff":"#4a5a7e"}}>{c.emoji} {c.name}</button>)}
-                </div>
-
-                {feedLoading && <div style={{padding:"18px 0",color:"#5a6a94",fontSize:13}}>Loading…</div>}
-
-                {!feedLoading && filt.map((p,i) => <div key={p.id} style={{animation:"fadeIn .25s ease "+i*0.04+"s both"}}><Card paper={p} onOpen={(p)=>push("paper",p)} onProfile={(u)=>push("profile",u)} onLike={handleLike} useApi={useApi}/></div>)}
-                {!feedLoading && filt.length===0 && <div style={{textAlign:"center",padding:30,color:"#4a5a7e"}}><p>No papers found.</p></div>}
-              </div>
-            )}
-
-            {v==="paper" && sel && <div style={{animation:"fadeIn .2s"}}><Detail paper={sel} onBack={pop} onProfile={(u)=>push("profile",u)} onRefresh={()=>loadFeed(ft, cf, q)} useApi={useApi}/></div>}
-            {v==="profile" && sel && <div style={{animation:"fadeIn .2s"}}><Profile user={sel} onBack={pop} onOpen={(p)=>push("paper",p)} isSelf={sel && _usr && sel.id === _usr.id} onLogout={onLogout} useApi={useApi} onProfileSaved={(user)=>{_usr=user;sSel(user);}}/></div>}
-            {v==="submit" && <div style={{animation:"fadeIn .2s"}}><Submit onBack={pop} onSubmitted={()=>loadFeed("discovery", cf, q)} useApi={useApi}/></div>}
-            {v==="notifs" && <div style={{animation:"fadeIn .2s"}}><Notifs onBack={pop} items={notifs}/></div>}
-            {v==="tools" && <div style={{animation:"fadeIn .2s"}}><ToolHub onBack={pop} onOpen={(tool)=>push("toolrun", tool)} /></div>}
-            {v==="toolrun" && toolSel && <div style={{animation:"fadeIn .2s"}}><ToolRunner tool={toolSel} onBack={pop} useApi={useApi} /></div>}
-            {v==="admin" && <div style={{animation:"fadeIn .2s"}}><AdminDash onBack={pop} /></div>}
-          </main>
-
-          <nav style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:"rgba(8,12,24,0.94)",backdropFilter:"blur(16px)",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-around",padding:"6px 0 calc(6px + env(safe-area-inset-bottom))"}}>
-            <button onClick={() => {sV("feed");sFt("discovery");sNs([]);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="feed"&&ft==="discovery"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-              <HIcon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" s={19}/><span>Discover</span>
-            </button>
-            <button onClick={() => {sV("feed");sFt("published");sNs([]);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="feed"&&ft==="published"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-              <HIcon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M18 2H6v7a6 6 0 0 0 12 0V2Z" s={19}/><span>Published</span>
-            </button>
-            <button onClick={() => push("submit")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="submit"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-              <HIcon d="M12 5v14M5 12h14" s={19}/><span>Submit</span>
-            </button>
-            <button onClick={() => push("tools")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:(v==="tools"||v==="toolrun")?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-              <HIcon d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12" s={19}/><span>Tools</span>
-            </button>
-            {_usr && _usr.role === "admin" ? (
-              <button onClick={() => push("admin")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="admin"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-                <HIcon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" s={19}/><span>Admin</span>
-              </button>
-            ) : (
-              <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-                <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
-              </button>
-            )}
-            {_usr && _usr.role === "admin" && (
-              <button onClick={() => push("profile",_usr)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,background:"none",border:"none",cursor:"pointer",padding:"3px 10px",color:v==="profile"?"#5ea8ff":"#3a4a6e",fontSize:9,fontWeight:600}}>
-                <HIcon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" s={19}/><span>Profile</span>
-              </button>
-            )}
-          </nav>
-        </div>
-      );
+      return;
     }
+    _papers.unshift({id:Date.now(),blind_id:Math.random().toString(36).slice(2,8).toUpperCase(),title:t,abstract:a,status:"in_discovery",status_label:"In Discovery",status_color:"#5ea8ff",category:CATS.find((x)=>x.id==+cat)||CATS[0],author:_usr,tags:[],like_count:0,comment_count:0,review_count:0,created_at:new Date().toISOString(),comments:[]});
+    sD(true);
+  };
 
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<App/>);
+  if (done) return <div style={{maxWidth:480,margin:"0 auto",textAlign:"center",paddingTop:40}}>
+    <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(74,222,128,0.12)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",border:"2px solid rgba(74,222,128,0.3)",color:"#4ade80",fontSize:24}}>&#10003;</div>
+    <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 8px"}}>Submitted!</h2>
+    <p style={{fontSize:14,color:"#8a9ac4",margin:"0 0 20px"}}>{useApi?"Your work has been submitted to the server.":"Your work is in Discovery."}</p>
+    <button onClick={onBack} style={{padding:"10px 24px",borderRadius:10,background:"#5ea8ff",border:"none",color:"#071120",fontWeight:700,fontSize:13,cursor:"pointer"}}>Back</button>
+  </div>;
 
-    setTimeout(() => {
-      const s = document.getElementById("splash");
-      if (s) s.classList.add("hide");
-    }, 600);
-  </script>
+  return <div style={{maxWidth:580,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:22}}>
+      <h2 style={{fontSize:20,fontWeight:800,margin:"0 0 4px"}}>Share your work</h2>
+      <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 16px"}}>No credentials required. If you investigated something, this is the place.</p>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <input value={t} onChange={(e) => sT(e.target.value)} placeholder="Title — what did you investigate?" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
+        <select value={cat} onChange={(e) => sCat(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:cat?"#edf1ff":"#3a4a6e",fontSize:12,fontFamily:"inherit",boxSizing:"border-box"}}>
+          <option value="">Category</option>
+          {CATS.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
+        </select>
+        <textarea value={a} onChange={(e) => sA(e.target.value)} rows={3} placeholder="Abstract — summarize your main idea" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+        <textarea value={b} onChange={(e) => sB(e.target.value)} rows={8} placeholder="Full paper text" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+        {err && <div style={{fontSize:12,color:"#ef4444",padding:"8px 10px",borderRadius:8,background:"rgba(239,68,68,0.08)"}}>{err}</div>}
+        <button onClick={submit} disabled={loading||!t||!a||!b||!cat} style={{padding:"12px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,cursor:t&&a&&b&&cat&&!loading?"pointer":"not-allowed",background:t&&a&&b&&cat&&!loading?"linear-gradient(135deg,#5ea8ff,#3d8be0)":"rgba(255,255,255,0.04)",color:t&&a&&b&&cat&&!loading?"#071120":"#3a4a6e"}}>{loading?"Submitting...":"Submit for review"}</button>
+      </div>
+    </div>
+  </div>;
+}
 
-  <script>
-    setTimeout(function() {
-      var r = document.getElementById('root');
-      if (r && !r.hasChildNodes()) {
-        var s = document.getElementById('splash');
-        if (s) s.innerHTML = '<div class="d" style="background:linear-gradient(135deg,#5ea8ff,#3d70b8);width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px">&#x29C7;</div><h1>The Journal</h1><p style="color:#5a6a94;margin-top:4px">Independent Physics</p><p style="color:#ef4444;margin-top:16px;font-size:13px">App is loading slowly. Try refreshing.</p><a href="/api/stats" style="color:#5ea8ff;margin-top:8px;font-size:12px;display:block">Check API Status</a>';
+/* ── PROFILE ────────────────────────────────────────────── */
+function Profile({user,onBack,onOpen}) {
+  const u = user || _usr;
+  const [f,sF] = useState(_fol.has(u.id));
+  const ps = [..._papers,..._published].filter((p) => p.author && p.author.id===u.id);
+  return <div style={{maxWidth:580,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:24,textAlign:"center",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"center"}}><Av user={u} size={64}/></div>
+      <h2 style={{fontSize:20,fontWeight:800,margin:"12px 0 4px"}}>{u.display_name}</h2>
+      <p style={{fontSize:13,color:"#6b7db3",margin:"0 0 14px"}}>{u.bio}</p>
+      <div style={{display:"flex",justifyContent:"center",gap:28,marginBottom:14}}>
+        <div><div style={{fontSize:20,fontWeight:800}}>{u.paper_count||0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Papers</div></div>
+        <div><div style={{fontSize:20,fontWeight:800}}>{u.review_count||0}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Reviews</div></div>
+        <div><div style={{fontSize:20,fontWeight:800,color:"#5ea8ff"}}>{typeof u.reputation_score==="number"?u.reputation_score.toFixed(1):"0.0"}</div><div style={{fontSize:10,color:"#4a5a7e",fontWeight:600}}>Rep</div></div>
+      </div>
+      <button onClick={() => {const n=!f;sF(n);}} style={{padding:"7px 20px",borderRadius:8,background:f?"rgba(255,255,255,0.03)":"rgba(94,168,255,0.12)",border:"1px solid "+(f?"rgba(255,255,255,0.08)":"rgba(94,168,255,0.25)"),color:f?"#5a6a94":"#5ea8ff",fontWeight:700,fontSize:12,cursor:"pointer"}}>{f?"Following":"Follow"}</button>
+    </div>
+    {ps.length > 0 && <div>{ps.map((p) => <Card key={p.id} paper={p} onOpen={onOpen} onProfile={() => {}}/>)}</div>}
+  </div>;
+}
+
+/* ── NOTIFICATIONS ──────────────────────────────────────── */
+function Notifs({onBack,items}) {
+  const list = items || [];
+  return <div style={{maxWidth:580,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 14px"}}>Notifications</h2>
+    {list.length===0 && <div style={{padding:"18px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",color:"#6b7db3",fontSize:13}}>No notifications yet.</div>}
+    {list.map((n) => <div key={n.id} style={{padding:"12px 16px",borderRadius:12,background:n.is_read?"rgba(255,255,255,0.02)":"rgba(94,168,255,0.06)",border:"1px solid "+(n.is_read?"rgba(255,255,255,0.05)":"rgba(94,168,255,0.12)"),marginBottom:8}}>
+      <div style={{fontSize:13,fontWeight:600}}>{n.title}</div>
+      {n.body && <div style={{fontSize:12,color:"#6b7db3",marginTop:2}}>{n.body}</div>}
+      {n.created_at && <div style={{fontSize:10,color:"#4a5a7e",marginTop:4}}>{tAgo(n.created_at)}</div>}
+    </div>)}
+  </div>;
+}
+
+/* ── ADMIN DASHBOARD ────────────────────────────────────── */
+function AdminDashboard({onBack}) {
+  const [tab,sTab] = useState("submissions");
+  const [subs,sSubs] = useState([]);
+  const [users,sUsers] = useState([]);
+  const [loading,sLoading] = useState(true);
+  const [msg,sMsg] = useState("");
+
+  const flash = (text) => {
+    sMsg(text);
+    setTimeout(() => sMsg(""), 1800);
+  };
+
+  const loadSubs = () => {
+    sLoading(true);
+    API.get("/api/admin/submissions").then(function(d){
+      sSubs((d && d.submissions) || []);
+      sLoading(false);
+    }).catch(function(){ sLoading(false); });
+  };
+
+  const loadUsers = () => {
+    sLoading(true);
+    API.get("/api/admin/users").then(function(d){
+      sUsers((d && d.users) || []);
+      sLoading(false);
+    }).catch(function(){ sLoading(false); });
+  };
+
+  useEffect(() => {
+    if (tab==="submissions") loadSubs();
+    else loadUsers();
+  }, [tab]);
+
+  const setStatus = (id,status) => {
+    API.post("/api/admin/submissions/" + id + "/status", {status:status}).then(function(d){
+      if (d && d.submission) {
+        flash("Updated");
+        loadSubs();
+        return;
       }
-    }, 15000);
-  </script>
-</body>
-</html>
+      flash((d && d.error) || "Failed");
+    }).catch(function(){ flash("Failed"); });
+  };
+
+  const deleteSubmission = (id) => {
+    if (!confirm("Delete this submission?")) return;
+    API.del("/api/admin/submissions/" + id).then(function(d){
+      if (d && d.ok) {
+        flash("Deleted");
+        loadSubs();
+        return;
+      }
+      flash((d && d.error) || "Failed");
+    }).catch(function(){ flash("Failed"); });
+  };
+
+  const updateRole = (id,role) => {
+    API.post("/api/admin/users/" + id + "/role", {role:role}).then(function(d){
+      if (d && d.user) {
+        flash("Role updated");
+        loadUsers();
+        return;
+      }
+      flash((d && d.error) || "Failed");
+    }).catch(function(){ flash("Failed"); });
+  };
+
+  const banUser = (id,banned) => {
+    API.post("/api/admin/users/" + id + (banned?"/unban":"/ban"), {}).then(function(d){
+      if (d && d.user) {
+        flash(banned?"Unbanned":"Banned");
+        loadUsers();
+        return;
+      }
+      flash((d && d.error) || "Failed");
+    }).catch(function(){ flash("Failed"); });
+  };
+
+  const deleteUser = (id) => {
+    if (!confirm("Delete this user?")) return;
+    API.del("/api/admin/users/" + id).then(function(d){
+      if (d && d.ok) {
+        flash("Deleted");
+        loadUsers();
+        return;
+      }
+      flash((d && d.error) || "Failed");
+    }).catch(function(){ flash("Failed"); });
+  };
+
+  const resetDb = () => {
+    if (!confirm("Reset the database? This deletes all non-admin users and all submissions.")) return;
+    API.post("/api/admin/reset-db", {}).then(function(d){
+      if (d && d.ok) {
+        flash("Database reset");
+        loadSubs();
+        loadUsers();
+        return;
+      }
+      flash((d && d.error) || "Failed");
+    }).catch(function(){ flash("Failed"); });
+  };
+
+  return <div style={{maxWidth:680,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Back</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>Admin Dashboard</h2>
+    <p style={{fontSize:12,color:"#6b7db3",margin:"0 0 14px"}}>Submissions, users, moderation, and reset controls.</p>
+
+    {msg && <div style={{marginBottom:10,padding:"8px 10px",borderRadius:8,background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.18)",color:"#4ade80",fontSize:12,fontWeight:700}}>{msg}</div>}
+
+    <div style={{display:"flex",gap:3,padding:3,borderRadius:10,background:"rgba(255,255,255,0.03)",marginBottom:14}}>
+      <button onClick={() => sTab("submissions")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:tab==="submissions"?"rgba(94,168,255,0.12)":"transparent",color:tab==="submissions"?"#5ea8ff":"#4a5a7e"}}>Submissions</button>
+      <button onClick={() => sTab("users")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:tab==="users"?"rgba(94,168,255,0.12)":"transparent",color:tab==="users"?"#5ea8ff":"#4a5a7e"}}>Users</button>
+    </div>
+
+    {loading && <div style={{textAlign:"center",padding:24,color:"#5ea8ff",fontSize:13}}>Loading...</div>}
+
+    {!loading && tab==="submissions" && <div>
+      {subs.length===0 && <div style={{padding:"18px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",color:"#6b7db3",fontSize:13}}>No submissions found.</div>}
+      {subs.map((p) => <div key={p.id} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:18,marginBottom:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start",marginBottom:8}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:18,fontWeight:800,lineHeight:1.25,marginBottom:4}}>{p.title}</div>
+            <div style={{fontSize:12,color:"#6b7db3"}}>{(p.author&&p.author.display_name)||"Unknown"} &middot; {tAgo(p.created_at)}</div>
+          </div>
+          <Badge label={p.status_label||"Submitted"} color={p.status_color||"#6b7db3"}/>
+        </div>
+        <p style={{fontSize:13,lineHeight:1.55,color:"#8a9ac4",marginBottom:12}}>{p.abstract}</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={() => setStatus(p.id,"published")} style={{padding:"8px 16px",borderRadius:12,border:"none",background:"rgba(74,222,128,0.12)",color:"#4ade80",fontWeight:800,fontSize:12,cursor:"pointer"}}>Publish</button>
+          <button onClick={() => setStatus(p.id,"in_discovery")} style={{padding:"8px 16px",borderRadius:12,border:"none",background:"rgba(240,160,48,0.12)",color:"#f0a030",fontWeight:800,fontSize:12,cursor:"pointer"}}>Review</button>
+          <button onClick={() => setStatus(p.id,"desk_returned")} style={{padding:"8px 16px",borderRadius:12,border:"none",background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:800,fontSize:12,cursor:"pointer"}}>Return</button>
+          <button onClick={() => setStatus(p.id,"declined")} style={{padding:"8px 16px",borderRadius:12,border:"none",background:"rgba(239,68,68,0.12)",color:"#ef4444",fontWeight:800,fontSize:12,cursor:"pointer"}}>Decline</button>
+          <button onClick={() => deleteSubmission(p.id)} style={{padding:"8px 16px",borderRadius:12,border:"none",background:"rgba(255,255,255,0.08)",color:"#d7def7",fontWeight:800,fontSize:12,cursor:"pointer"}}>Delete</button>
+        </div>
+      </div>)}
+    </div>}
+
+    {!loading && tab==="users" && <div>
+      {users.length===0 && <div style={{padding:"18px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",color:"#6b7db3",fontSize:13}}>No users found.</div>}
+      {users.map((u) => <div key={u.id} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:14,marginBottom:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700}}>{u.display_name}</div>
+            <div style={{fontSize:11,color:"#6b7db3"}}>{u.email||""} &middot; {u.role||"member"}{u.is_banned?" &middot; banned":""}</div>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <button onClick={() => updateRole(u.id, u.role==="admin"?"member":"admin")} style={{padding:"7px 12px",borderRadius:10,border:"none",background:"rgba(94,168,255,0.12)",color:"#5ea8ff",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u.role==="admin"?"Demote":"Promote"}</button>
+            <button onClick={() => banUser(u.id, u.is_banned)} style={{padding:"7px 12px",borderRadius:10,border:"none",background:"rgba(240,160,48,0.12)",color:"#f0a030",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u.is_banned?"Unban":"Ban"}</button>
+            <button onClick={() => deleteUser(u.id)} style={{padding:"7px 12px",borderRadius:10,border:"none",background:"rgba(239,68,68,0.12)",color:"#ef4444",fontWeight:700,fontSize:11,cursor:"pointer"}}>Delete</button>
+          </div>
+        </div>
+      </div>)}
+      <button onClick={resetDb} style={{width:"100%",padding:"12px",borderRadius:12,border:"1px solid rgba(239,68,68,0.22)",background:"rgba(239,68,68,0.08)",color:"#ef4444",fontWeight:800,fontSize:12,cursor:"pointer",marginTop:8}}>Reset Database (Nuclear Option)</button>
+    </div>}
+  </div>;
+}
+
+/* ── ENGINES ─────────────────────────────────────────────── */
+function _desk(t,a,b){const f=t+"\n"+a+"\n"+b,l=f.toLowerCase(),wc=b.split(/\s+/).filter(Boolean).length,sc={scope:0,claim:0,structure:0,clarity:0,quantitative:0,citations:0,anonymity:5,good_faith:0},str=[],sug=[],fl=[];var pt=["energy","force","momentum","field","wave","quantum","gravity","entropy","experiment","friction","chaos","nonlinear","measurement","hypothesis","oscillat","conservation","symmetry","spacetime","curvature"];sc.scope=Math.min(5,Math.floor(pt.filter(function(x){return l.includes(x)}).length/2)+1);if(sc.scope>=4)str.push("Strong physics content");if(sc.scope<2)sug.push("Add physics terminology");var cl=["we show","we find","i find","this paper","result shows","i measured","hypothesis","we conclude","data indicates"];sc.claim=Math.min(5,cl.filter(function(x){return l.includes(x)}).length+1);if(sc.claim>=4)str.push("Clear claims");if(sc.claim<3)sug.push("State central claim explicitly");var se=["introduction","method","results","discussion","conclusion","references","theory"];sc.structure=Math.min(5,se.filter(function(x){return l.includes(x)}).length+1);if(sc.structure>=4)str.push("Well-organized");if(sc.structure<3)sug.push("Add clear sections");sc.clarity=wc/(Math.max(1,(f.match(/[.!?]+/g)||[]).length))<35?4:3;if(wc>=500)sc.clarity=Math.min(5,sc.clarity+1);var q=0;if(/[=]/.test(b)&&/\d/.test(b))q++;if((b.match(/\d+\.?\d*/g)||[]).length>10)q++;if(/\b(cm|m|kg|s|Hz|eV|N|J|W)\b/.test(b))q++;if(/\b(mean|std|p-value)\b/i.test(b))q++;sc.quantitative=Math.min(5,q);if(q>=3)str.push("Strong quantitative content");if(q<2)sug.push("Add data or equations");var ci=0;if((f.match(/\[\d+\]/g)||[]).length>=1)ci+=2;if(l.includes("references"))ci++;sc.citations=Math.min(5,ci);if(ci>=3)str.push("References prior work");if(ci<2)sug.push("Add references");if(/[\w.+-]+@[\w-]+\.[\w.-]+/.test(f)){sc.anonymity-=2;fl.push("Contains email");}var sp=["buy now","click here","guaranteed","act now"];if(sp.some(function(x){return l.includes(x)})){sc.good_faith=0;fl.push("Spam");}else sc.good_faith=wc>=200?5:wc>=100?4:3;if(sc.good_faith>=4)str.push("Sincere inquiry");var vals=Object.keys(sc).map(function(k){return sc[k]});var ov=Math.round(vals.reduce(function(a,b){return a+b},0)/40*100);var rec=sc.good_faith<=1?"block":ov>=60&&sc.good_faith>=3?"pass":"return";return {ov:ov,rec:rec,sc:sc,str:str,sug:sug,fl:fl,sum:rec==="pass"?"Ready for review.":rec==="block"?"Not accepted.":"Needs development.",enc:rec==="block"?"We welcome genuine submissions.":"Your curiosity is valued here."};}
+
+function _ocm(data){var N=data.length,WZ=200,WB=500,E=1e-8;if(N<WB+10) return {err:true};var z=new Array(N).fill(0);for(var t=WZ;t<N;t++){var w=data.slice(t-WZ,t),mu=w.reduce(function(a,b){return a+b},0)/WZ,v=w.reduce(function(a,b){return a+(b-mu)*(b-mu)},0)/WZ;z[t]=(data[t]-mu)/(Math.sqrt(v)+E);}var b2=new Array(N).fill(0);for(var t2=WB;t2<N;t2++)b2[t2]=z.slice(t2-WB,t2).reduce(function(a,v){return a+v},0)/WB;var s=Math.max(WZ,WB),D=data.map(function(_,t){return Math.abs(z[t]-b2[t])}),ind=[];for(var t3=s;t3<N-1;t3++)ind.push(D[t3+1]<D[t3]?1:0);var CR=ind.reduce(function(a,b){return a+b},0)/ind.length,zS=(CR-.5)/Math.sqrt(.25/ind.length);return {CR:+CR.toFixed(6),z:+zS.toFixed(2),cls:CR>.50522?"DRIVEN-DISSIPATIVE":CR<.495?"AUTONOMOUS CHAOTIC":"STOCHASTIC"};}
+
+function _gDuf(n){var x=.5,v=0,t=0;for(var i=0;i<1e4;i++){var a=-.25*v-x*x*x+x+.3*Math.cos(t);v+=a*.005;x+=v*.005;t+=.005;}var o=[];for(var i2=0;i2<n*20;i2++){var a2=-.25*v-x*x*x+x+.3*Math.cos(t);v+=a2*.005;x+=v*.005;t+=.005;o.push(x);}return o.filter(function(_,i){return i%20===0}).slice(0,n);}
+function _gLor(n){var x=1,y=1,z=1;for(var i=0;i<5e3;i++){var dx=10*(y-x)*.01,dy=(x*(28-z)-y)*.01,dz=(x*y-8/3*z)*.01;x+=dx;y+=dy;z+=dz;}var o=[];for(var i2=0;i2<n*10;i2++){var dx2=10*(y-x)*.01,dy2=(x*(28-z)-y)*.01,dz2=(x*y-8/3*z)*.01;x+=dx2;y+=dy2;z+=dz2;o.push(x);}return o.filter(function(_,i){return i%10===0}).slice(0,n);}
+function _gNoi(n){var o=[];for(var i=0;i<n;i++){var u,v,s;do{u=Math.random()*2-1;v=Math.random()*2-1;s=u*u+v*v;}while(s>=1||s===0);o.push(u*Math.sqrt(-2*Math.log(s)/s));}return o;}
+function _mkCA(rule,N,seed){var s=new Array(N).fill(0);s[Math.abs(seed)%N]=1;return {state:s.slice(),step:function(){var o=new Array(N).fill(0);for(var i=0;i<N;i++){var a=this.state[(i-1+N)%N],b=this.state[i],c=this.state[(i+1)%N];o[i]=(rule>>((a<<2)|(b<<1)|c))&1;}this.state=o;return o.map(function(b){return b?1:-1;});}};}
+function _iCLM(K,N){return {psi:Array.from({length:K},function(_,k){var r=new Array(N).fill(0);r[(1337+13*k)%N]=.01;return r;}),G:new Array(N).fill(0),kw:1,Dp:1e-6,ri:0};}
+function _sCLM(st,f,K,N,fg){var psi=st.psi,G=new Array(N).fill(0);for(var n=0;n<N;n++){var s=0;for(var k=0;k<K;k++)s+=psi[k][n];G[n]=s/K;}var nP=Array.from({length:K},function(){return new Array(N)});for(var k2=0;k2<K;k2++)for(var n2=0;n2<N;n2++){var x=psi[k2][n2];var x2=.88*x+.35*(G[n2]-x)+.07*(G[n2]-x)+fg*f[k2][n2];var ax=Math.abs(x);if(ax>1.6)x2+=Math.max(-.25,Math.min(.25,-.14*(ax-1.6)*(x/Math.max(1e-9,ax))));nP[k2][n2]=2.25*Math.tanh(x2/2.25);}var eS=0;for(var k3=0;k3<K;k3++)for(var n3=0;n3<N;n3++)eS+=Math.abs(nP[k3][n3]-G[n3]);var ge=eS/(K*N),df=Math.max(1e-4,.035),kw=Math.max(0,Math.min(10,.75*st.kw+.25*((ge+df)/(Math.max(st.Dp,0)+df))));var stab=Math.max(0,Math.min(1,(1-Math.max(0,kw-1))*(1-ge/.28)));var flat=[];for(var k4=0;k4<K;k4++)for(var n4=0;n4<N;n4++)flat.push(nP[k4][n4]);var prms=Math.sqrt(flat.reduce(function(a,x){return a+x*x},0)/flat.length);return {st:{psi:nP,G:G,kw:kw,Dp:ge,ri:st.ri+Math.max(0,st.Dp-ge)},m:{ge:ge,kw:kw,stab:stab,prms:prms,lbl:kw>1.25?"SURGE":stab>=.5&&ge<.14?"ELIGIBLE":kw<1?"COIL":"DRIFT",ri:st.ri+Math.max(0,st.Dp-ge)},G:G};}
+
+/* Score visuals */
+function SB({s,l}) { var p=s/5*100,c=s>=4?"#4ade80":s>=3?"#5ea8ff":s>=2?"#f0a030":"#ef4444"; return <div style={{marginBottom:5}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:10,fontWeight:700,color:"#6b7db3"}}>{l}</span><span style={{fontSize:10,fontWeight:800,color:c}}>{s}/5</span></div><div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.05)"}}><div style={{height:"100%",borderRadius:2,background:c,width:p+"%",transition:"width .5s"}}/></div></div>; }
+function SR({s,sz=65}) { var r=(sz-8)/2,ci=2*Math.PI*r,of=ci-s/100*ci,c=s>=70?"#4ade80":s>=40?"#f0a030":"#ef4444"; return <div style={{position:"relative",width:sz,height:sz,flexShrink:0}}><svg width={sz} height={sz} style={{transform:"rotate(-90deg)"}}><circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5"/><circle cx={sz/2} cy={sz/2} r={r} fill="none" stroke={c} strokeWidth="5" strokeDasharray={ci} strokeDashoffset={of} strokeLinecap="round" style={{transition:"stroke-dashoffset .8s"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:16,fontWeight:800,color:c}}>{s}</span></div></div>; }
+
+/* ── DESK TOOL ──────────────────────────────────────────── */
+function DeskTool({onBack}) {
+  const [t,sT]=useState(""); const [a,sA]=useState(""); const [b,sB]=useState(""); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const samples=[{l:"Friction paper",tt:"Why Does My Ball Always Stop?",aa:"I rolled a ball 500 times and found exponential decay.",bb:"Introduction\nBalls stop. I measured it.\n\nMethods\n500 trials on wood, sandpaper, tile. Measured stopping distance in cm.\n\nResults\nWood: 187cm (std 12). Sandpaper: 67cm (std 8). Tile: 245cm.\nFit y=A*e^(-bx), R squared 0.91-0.97.\n\nDiscussion\nExponential decay from constant friction fraction.\n\nConclusion\nFriction causes exponential energy loss.\n\nReferences\n[1] Halliday, Fundamentals of Physics"},{l:"Spam test",tt:"BUY CRYPTO",aa:"Click here. Guaranteed.",bb:"Buy now. Act now. Free money. Click here."}];
+  const crit=[{k:"scope",l:"Scope"},{k:"claim",l:"Claims"},{k:"structure",l:"Structure"},{k:"clarity",l:"Clarity"},{k:"quantitative",l:"Quant"},{k:"citations",l:"Literature"},{k:"anonymity",l:"Anonymity"},{k:"good_faith",l:"Good Faith"}];
+  return <div style={{maxWidth:600,margin:"0 auto"}}>
+    <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#5ea8ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>&#8592; Tools</button>
+    <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 10px"}}>&#x2726; AI Desk Review</h2>
+    <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>{samples.map((s,i) => <button key={i} onClick={() => {sT(s.tt);sA(s.aa);sB(s.bb);sR(null);}} style={{padding:"4px 10px",borderRadius:7,fontSize:11,fontWeight:600,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",color:"#6b7db3",cursor:"pointer"}}>{s.l}</button>)}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+      <input value={t} onChange={(e) => sT(e.target.value)} placeholder="Title" style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:13,fontWeight:600,boxSizing:"border-box"}}/>
+      <textarea value={a} onChange={(e) => sA(e.target.value)} rows={2} placeholder="Abstract" style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+      <textarea value={b} onChange={(e) => sB(e.target.value)} rows={5} placeholder="Paper text" style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)",color:"#edf1ff",fontSize:12,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+      <button onClick={() => {if(!t||!b)return;sL(true);setTimeout(function(){sR(_desk(t,a,b));sL(false);},1200);}} disabled={ld||!t||!b} style={{padding:"11px",borderRadius:9,border:"none",fontSize:13,fontWeight:700,cursor:t&&b?"pointer":"not-allowed",background:t&&b?"linear-gradient(135deg,#38bdf8,#0ea5e9)":"rgba(255,255,255,0.04)",color:t&&b?"#071120":"#3a4a6e"}}>{ld?"Analyzing...":"Run Review"}</button>
+    </div>
+    {r && <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}><SR s={r.ov}/><div style={{flex:1}}><span style={{display:"inline-block",padding:"4px 10px",borderRadius:7,fontSize:12,fontWeight:700,background:r.rec==="pass"?"rgba(74,222,128,0.1)":r.rec==="block"?"rgba(239,68,68,0.1)":"rgba(240,160,48,0.1)",color:r.rec==="pass"?"#4ade80":r.rec==="block"?"#ef4444":"#f0a030"}}>{r.rec==="pass"?"Pass":r.rec==="block"?"Block":"Return"}</span><p style={{fontSize:12,color:"#8a9ac4",marginTop:6,lineHeight:1.4}}>{r.sum}</p></div></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px",marginBottom:12}}>{crit.map((c) => <SB key={c.k} s={r.sc[c.k]} l={c.l}/>)}</div>
+      {r.str.length>0 && <div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:"#4ade80",textTransform:"uppercase",marginBottom:4}}>Strengths</div>{r.str.map((s,i) => <div key={i} style={{fontSize:11,color:"#8a9ac4"}}>{s}</div>)}</div>}
+      {r.sug.length>0 && <div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:"#5ea8ff",textTransform:"uppercase",marginBottom:4}}>Suggestions</div>{r.sug.map((s,i) => <div key={i} style={{fontSize:11,color:"#8a9ac4"}}>{s}</div>)}</div>}
+      <div style={{padding:"10px 12px",borderRadius:8,background:"rgba(94,168,255,0.04)",border:"1px solid rgba(94,168,255,0.08)"}}><p style={{fontSize:11,color:"#7da8d4",margin:0,fontStyle:"italic"}}>"{r.enc}"</p></div>
+    </div>}
+  </div>;
+}
+
+/* ── OCM TOOL (with file upload) ─────────────────────────── */
+function OCMTool({onBack}) {
+  const [ds,sDs]=useState(null); const [r,sR]=useState(null); const [ld,sL]=useState(false);
+  const [mode,sMode]=useState("samples"); const [rawText,sRaw]=useState("");
+  const [userData,sUD]=useState(null); const [udLabel,sUDL]=useState("");
+  const [cols,sCols]=useState([]); const [colIdx,sCol]=useState(0); const [preview,sPrev]=useState(null);
+  const fileRef=useRef(null);
+  const dsets=[{id:"duf",l:"Driven Duffing",g:function(){return _gDuf(5000)},ex:"DRIVEN-DISSIPATIVE"},{id:"lor",l:"Lorenz",g:function(){return _gLor(5000)},ex:"AUTONOMOUS CHAOTIC"},{id:"noi",l:"White Noise",g:function(){return _gNoi(5000)},ex:"STOCHASTIC"}];
+
+  const parseCSV = (text, label) => {
+    var lines = text.trim().split(/\n/).filter(function(l){return l.trim()});
+    if (lines.length < 2) return null;
+    var delim = lines[0].includes('\t') ? '\t' : ',';
+    var rows = lines.map(function(l){return l.split(delim).map(function(c){return c.trim()})});
+    var header = rows[0];
+    var firstRowNumeric = header.every(function(c){return !isNaN(parseFloat(c)) && c !== ''});
+    var dataRows = firstRowNumeric ? rows : rows.slice(1);
+    var colNames = firstRowNumeric ? header.map(function(_,i){return "Column "+(i+1)}) : header;
+    var colData = [];
+    for (var ci=0; ci<colNames.length; ci++) {
+      var vals = [];
+      for (var ri=0; ri<dataRows.length; ri++) {
+        if (ci < dataRows[ri].length) { var v=parseFloat(dataRows[ri][ci]); if (!isNaN(v) && isFinite(v) && dataRows[ri][ci]!=='') vals.push(v); }
+      }
+      colData.push({name:colNames[ci],data:vals,count:vals.length});
+    }
+    var valid = colData.filter(function(c){return c.count>=600});
+    if (valid.length===0) return null;
+    sCols(valid); sCol(0); sUD(valid[0].data); sUDL(label||valid[0].name); sPrev(valid[0].data);
+    return valid;
+  };
+
+  const handleFile = (e) => {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var text = ev.target && ev.target.result;
+      if (typeof text === 'string') {
