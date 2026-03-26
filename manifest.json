@@ -1,0 +1,16 @@
+{
+  "name": "The Journal \u2014 Independent Physics",
+  "short_name": "The Journal",
+  "description": "A free platform for independent researchers. No degree required.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080c18",
+  "theme_color": "#080c18",
+  "orientation": "portrait-primary",
+  "icons": [],
+  "categories": [
+    "education",
+    "science"
+  ],
+  "lang": "en"
+}
