@@ -7,6 +7,7 @@ import io
 import csv
 import json
 import math
+import random
 import re
 import uuid
 import threading
@@ -27,6 +28,10 @@ BASE = Path(__file__).parent
 INSTANCE = BASE / "instance"
 INSTANCE.mkdir(exist_ok=True)
 
+# Ensure avatar folder exists
+AVATAR_FOLDER = BASE / "static" / "avatars"
+AVATAR_FOLDER.mkdir(parents=True, exist_ok=True)
+
 # --- Database config ---
 db_url = os.getenv("DATABASE_URL")
 if db_url and db_url.startswith("postgres://"):
@@ -36,7 +41,7 @@ if not db_url:
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     db_url = "sqlite:///" + str(sqlite_path)
 
-# --- Secret key with fallback (ensures it's never empty) ---
+# --- Secret key with fallback ---
 secret = os.getenv("SECRET_KEY")
 if not secret or secret.strip() == "":
     secret = "dev-change-before-deploy"
@@ -53,6 +58,7 @@ app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
 app.config["REMEMBER_COOKIE_SECURE"] = secure_cookies
 app.config["REMEMBER_COOKIE_HTTPONLY"] = True
 app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max for avatar
 
 if db_url.startswith("sqlite"):
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -113,6 +119,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default="member")
     bio = db.Column(db.Text, default="")
     avatar_color = db.Column(db.String(7), default="#5ea8ff")
+    avatar_filename = db.Column(db.String(255), default="")  # new column
     orcid = db.Column(db.String(32), default="")
     reputation = db.Column(db.Float, default=1.0)
     is_banned = db.Column(db.Boolean, default=False)
@@ -159,6 +166,7 @@ class User(UserMixin, db.Model):
             "initials": self.initials,
             "bio": self.bio,
             "avatar_color": self.avatar_color,
+            "avatar_filename": self.avatar_filename or "",
             "orcid": self.orcid or "",
             "reputation_score": round(self.reputation or 0, 2),
             "paper_count": paper_count,
@@ -188,7 +196,8 @@ class Submission(db.Model):
     title = db.Column(db.String(500))
     abstract = db.Column(db.Text)
     body_text = db.Column(db.Text)
-    status = db.Column(db.String(30), default="submitted", index=True)
+    status = db.Column(db.String(30), default="draft", index=True)
+    is_draft = db.Column(db.Boolean, default=True, index=True)
     tags = db.Column(db.Text, default="")
     author_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     category_id = db.Column(db.Integer, db.ForeignKey("category.id"))
@@ -200,8 +209,8 @@ class Submission(db.Model):
     category = db.relationship("Category", backref="submissions")
 
     STATUS_LABELS = {
-        "submitted": "Submitted",
-        "desk_passed": "Under Review",
+        "draft": "Private Draft",
+        "submitted": "Submitted (Admin Queue)",
         "in_discovery": "In Discovery",
         "under_review": "Under Review",
         "published": "Published",
@@ -214,7 +223,8 @@ class Submission(db.Model):
     }
 
     STATUS_COLORS = {
-        "submitted": "#6b7db3",
+        "draft": "#6b7db3",
+        "submitted": "#8b9cc8",
         "in_discovery": "#5ea8ff",
         "under_review": "#f0a030",
         "published": "#4ade80",
@@ -247,6 +257,7 @@ class Submission(db.Model):
             "review_count": rc,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "published_at": self.published_at.isoformat() if self.published_at else None,
+            "is_draft": self.is_draft,
         }
         if uid:
             d["user_liked"] = Like.query.filter_by(user_id=uid, submission_id=self.id).first() is not None
@@ -329,7 +340,11 @@ def migrate_schema():
     except Exception:
         pass
     try:
-        ensure_column("submission", "is_draft", "ALTER TABLE submission ADD COLUMN is_draft BOOLEAN DEFAULT 0")
+        ensure_column("user", "avatar_filename", "ALTER TABLE \"user\" ADD COLUMN avatar_filename VARCHAR(255) DEFAULT ''")
+    except Exception:
+        pass
+    try:
+        ensure_column("submission", "is_draft", "ALTER TABLE submission ADD COLUMN is_draft BOOLEAN DEFAULT 1")
     except Exception:
         pass
     try:
@@ -349,7 +364,7 @@ PEER_REVIEW_VISIBLE_STATUSES = ("in_discovery", "under_review", "published")
 
 def journal_capabilities_payload():
     return {
-        "phase": "phase_1a_server_only",
+        "phase": "phase_2_builder_and_queue",
         "build_preserves_baseline": True,
         "feed_contract": {
             "bottom_nav_public_target": "Discover",
@@ -372,7 +387,7 @@ def journal_capabilities_payload():
         "tool_contract": {
             "supports_export_future_phase": True,
             "strict_invalid_numeric_handling_planned": True,
-            "silent_sample_fallback_currently_present": True,
+            "silent_sample_fallback_currently_present": False,  # fixed
         },
         "status_groups": {
             "public_feed": list(PUBLIC_FEED_STATUSES),
@@ -436,7 +451,20 @@ def create_notification(user_id, title, body, link=""):
     db.session.add(Notification(user_id=user_id, title=title[:255], body=body or "", link=link or ""))
 
 
-# --- Research tool implementations (same as working version) ---
+def add_editorial_comment(submission_id, admin_user, status):
+    """Add a comment when admin changes status."""
+    status_label = Submission.STATUS_LABELS.get(status, status)
+    body = f"**Editorial decision:** Paper status changed to **{status_label}**."
+    comment = Comment(
+        submission_id=submission_id,
+        author_id=admin_user.id,
+        comment_type="editorial",
+        body=body,
+    )
+    db.session.add(comment)
+
+
+# --- Research tool implementations ---
 def run_desk_review(title, abstract, body):
     lower = (title + " " + abstract + " " + body).lower()
     wc = len(body.split())
@@ -922,6 +950,7 @@ def static_files(p):
     return send_from_directory(BASE / "static", p)
 
 
+# --- Auth ---
 @app.route("/api/auth/register", methods=["POST"])
 def register():
     d = request.get_json(silent=True) or {}
@@ -1012,6 +1041,36 @@ def update_profile():
     return jsonify({"ok": True, "user": current_user.to_dict()})
 
 
+@app.route("/api/auth/avatar", methods=["POST"])
+@api_login_required
+def upload_avatar():
+    if "avatar" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["avatar"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+    # Validate extension
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in {".png", ".jpg", ".jpeg", ".gif"}:
+        return jsonify({"error": "Only PNG, JPG, JPEG, GIF allowed"}), 400
+    # Generate unique filename
+    new_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = AVATAR_FOLDER / new_name
+    try:
+        file.save(str(file_path))
+    except Exception as e:
+        return jsonify({"error": f"Failed to save: {e}"}), 500
+    # Delete old avatar if exists
+    if current_user.avatar_filename:
+        old_path = AVATAR_FOLDER / current_user.avatar_filename
+        if old_path.exists():
+            old_path.unlink()
+    current_user.avatar_filename = new_name
+    db.session.commit()
+    return jsonify({"ok": True, "avatar_filename": new_name})
+
+
+# --- Categories + feed ---
 @app.route("/api/categories")
 def categories():
     return jsonify({
@@ -1066,7 +1125,8 @@ def suggest_category():
 def discovery():
     page = request.args.get("page", 1, type=int)
     q = Submission.query.filter(
-        Submission.status.in_(["in_discovery", "under_review", "revision_requested", "revised", "contested", "desk_returned"])
+        Submission.status.in_(DISCOVERY_STATUSES),
+        Submission.is_draft.is_(False)
     )
     cat = request.args.get("category_id", type=int)
     if cat:
@@ -1081,7 +1141,7 @@ def discovery():
 
 @app.route("/api/feed/published")
 def published():
-    p = Submission.query.filter_by(status="published").order_by(Submission.published_at.desc()).paginate(page=1, per_page=20, error_out=False)
+    p = Submission.query.filter_by(status="published", is_draft=False).order_by(Submission.published_at.desc()).paginate(page=1, per_page=20, error_out=False)
     uid = current_user.id if current_user.is_authenticated else None
     return jsonify({"papers": [s.to_card(uid) for s in p.items]})
 
@@ -1123,6 +1183,14 @@ def read_uploaded_text():
     return "\n\n".join([p for p in parts if p])
 
 
+# --- Builder endpoints ---
+@app.route("/api/builder/drafts")
+@api_login_required
+def builder_drafts():
+    drafts = Submission.query.filter_by(author_id=current_user.id).filter(Submission.status.in_(BUILDER_STATUSES)).order_by(Submission.updated_at.desc()).all()
+    return jsonify({"papers": [s.to_card(current_user.id, full_abstract=True) for s in drafts]})
+
+
 @app.route("/api/submissions", methods=["POST"])
 @api_login_required
 def create_submission():
@@ -1142,6 +1210,7 @@ def create_submission():
             "body_text": body_text,
             "tags": (d.get("tags") or "").strip(),
             "category_id": category_from_payload(d),
+            "is_draft": parse_bool(d.get("is_draft", "true")),
         }
     else:
         d = request.get_json(silent=True) or {}
@@ -1151,6 +1220,7 @@ def create_submission():
             "body_text": (d.get("body_text") or "").strip(),
             "tags": (d.get("tags") or "").strip(),
             "category_id": category_from_payload(d),
+            "is_draft": parse_bool(d.get("is_draft", "true")),
         }
 
     if not payload["title"] or not payload["abstract"]:
@@ -1166,39 +1236,112 @@ def create_submission():
         tags=payload["tags"],
         author_id=current_user.id,
         category_id=payload["category_id"],
+        is_draft=payload["is_draft"],
+        status="draft" if payload["is_draft"] else "submitted",
     )
-    desk = run_desk_review(sub.title, sub.abstract, sub.body_text)
-    sub.status = {"pass": "in_discovery", "return": "desk_returned", "block": "desk_blocked"}[desk["recommendation"]]
     db.session.add(sub)
-    db.session.flush()
-    db.session.add(DeskDecision(
-        submission_id=sub.id,
-        decision=desk["recommendation"],
-        overall_score=desk["overall_score"],
-        summary=desk["summary"],
-        encouragement=desk["encouragement"],
-        scores_json=json.dumps(desk["scores"]),
-    ))
+    # If not a draft, run desk review and store decision
+    desk = None
+    if not payload["is_draft"]:
+        desk = run_desk_review(sub.title, sub.abstract, sub.body_text)
+        db.session.add(DeskDecision(
+            submission_id=sub.id,
+            decision=desk["recommendation"],
+            overall_score=desk["overall_score"],
+            summary=desk["summary"],
+            encouragement=desk["encouragement"],
+            scores_json=json.dumps(desk["scores"]),
+        ))
     db.session.commit()
-    return jsonify({"submission": sub.to_card(current_user.id), "desk_review": desk}), 201
+    return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "desk_review": desk}), 201
 
 
-@app.route("/api/submissions/<bid>")
-def get_submission(bid):
-    s = Submission.query.filter_by(blind_id=bid).first_or_404()
-    d = s.to_card(current_user.id if current_user.is_authenticated else None)
-    d["body_text"] = s.body_text
-    d["comments"] = [
+@app.route("/api/submissions/<bid>", methods=["GET", "PUT", "DELETE"])
+@api_login_required
+def submission_detail_edit_delete(bid):
+    sub = resolve_submission(bid)
+    if request.method == "GET":
+        data = sub.to_card(current_user.id, full_abstract=True)
+        data["comments"] = [
+            {
+                "id": c.id,
+                "author": c.author.to_dict() if c.author else None,
+                "comment_type": c.comment_type,
+                "body": c.body,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in Comment.query.filter_by(submission_id=sub.id).order_by(Comment.created_at.asc()).all()
+        ]
+        return jsonify({"submission": data})
+
+    owner_or_admin = current_user.role == "admin" or current_user.id == sub.author_id
+    if not owner_or_admin:
+        return jsonify({"error": "Not allowed"}), 403
+
+    if request.method == "DELETE":
+        Like.query.filter_by(submission_id=sub.id).delete()
+        Bookmark.query.filter_by(submission_id=sub.id).delete()
+        Comment.query.filter_by(submission_id=sub.id).delete()
+        Review.query.filter_by(submission_id=sub.id).delete()
+        DeskDecision.query.filter_by(submission_id=sub.id).delete()
+        db.session.delete(sub)
+        db.session.commit()
+        return jsonify({"ok": True})
+
+    # PUT: update draft
+    data = request_data()
+    if "title" in data:
+        sub.title = (data.get("title") or "").strip() or sub.title
+    if "abstract" in data:
+        sub.abstract = (data.get("abstract") or "").strip()
+    if "body_text" in data or "body" in data:
+        sub.body_text = (data.get("body_text") or data.get("body") or "").strip()
+    if "tags" in data:
+        sub.tags = (data.get("tags") or "").strip()
+    if "category_id" in data or "category" in data:
+        try:
+            sub.category_id = int(data.get("category_id") or data.get("category") or sub.category_id)
+        except Exception:
+            pass
+    if "is_draft" in data:
+        sub.is_draft = parse_bool(data.get("is_draft"))
+        if sub.is_draft:
+            sub.status = "draft"
+    if "submit_for_review" in data and parse_bool(data.get("submit_for_review")):
+        if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
+            return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
+        sub.is_draft = False
+        sub.status = "submitted"
+        desk = run_desk_review(sub.title or "", sub.abstract or "", sub.body_text or "")
+        db.session.add(DeskDecision(
+            submission_id=sub.id,
+            decision=desk["recommendation"],
+            overall_score=desk["overall_score"],
+            summary=desk["summary"],
+            encouragement=desk["encouragement"],
+            scores_json=json.dumps(desk["scores"]),
+        ))
+    db.session.commit()
+    return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "ok": True})
+
+
+@app.route("/api/submissions/<bid>/public")
+def get_public_submission(bid):
+    sub = resolve_submission(bid)
+    if sub.is_draft or sub.status not in {"in_discovery", "under_review", "published"}:
+        return jsonify({"error": "Not publicly available"}), 404
+    data = sub.to_card(current_user.id if current_user.is_authenticated else None, full_abstract=True)
+    data["comments"] = [
         {
             "id": c.id,
-            "author": c.author.to_dict(),
+            "author": c.author.to_dict() if c.author else None,
             "comment_type": c.comment_type,
             "body": c.body,
-            "created_at": c.created_at.isoformat(),
+            "created_at": c.created_at.isoformat() if c.created_at else None,
         }
-        for c in Comment.query.filter_by(submission_id=s.id).order_by(Comment.created_at).all()
+        for c in Comment.query.filter_by(submission_id=sub.id).order_by(Comment.created_at.asc()).all()
     ]
-    return jsonify({"submission": d})
+    return jsonify({"submission": data})
 
 
 @app.route("/api/submissions/<bid>/like", methods=["POST"])
@@ -1241,10 +1384,11 @@ def add_comment(bid):
     body = (d.get("body") or "").strip()
     if not body:
         return jsonify({"error": "Comment required"}), 400
+    comment_type = d.get("comment_type", "note").strip()[:30]
     c = Comment(
         submission_id=s.id,
         author_id=current_user.id,
-        comment_type=d.get("comment_type", "note"),
+        comment_type=comment_type,
         body=body,
     )
     db.session.add(c)
@@ -1262,6 +1406,7 @@ def add_comment(bid):
     }), 201
 
 
+# --- Users ---
 @app.route("/api/users/<int:uid>")
 def get_user(uid):
     u = User.query.get_or_404(uid)
@@ -1269,7 +1414,8 @@ def get_user(uid):
     d["papers"] = [
         s.to_card(current_user.id if current_user.is_authenticated else None)
         for s in Submission.query.filter_by(author_id=uid).filter(
-            Submission.status.in_(["in_discovery", "under_review", "published", "desk_returned"])
+            Submission.status.in_(["in_discovery", "under_review", "published", "desk_returned"]),
+            Submission.is_draft.is_(False)
         ).order_by(Submission.updated_at.desc()).limit(20).all()
     ]
     return jsonify({"user": d})
@@ -1291,6 +1437,7 @@ def toggle_follow(uid):
     return jsonify({"followed": True})
 
 
+# --- Notifications ---
 @app.route("/api/notifications")
 @api_login_required
 def notifications():
@@ -1319,11 +1466,25 @@ def notifications_count():
     return jsonify({"count": count})
 
 
+@app.route("/api/notifications/read", methods=["POST"])
+@api_login_required
+def notification_read():
+    data = request_data()
+    nid = data.get("id")
+    if nid:
+        note = Notification.query.filter_by(id=nid, user_id=current_user.id).first_or_404()
+        note.is_read = True
+    else:
+        Notification.query.filter_by(user_id=current_user.id, is_read=False).update({"is_read": True})
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/stats")
 def stats():
     return jsonify({
-        "published_count": Submission.query.filter_by(status="published").count(),
-        "discovery_count": Submission.query.filter(Submission.status.in_(["in_discovery", "under_review", "desk_returned"])).count(),
+        "published_count": Submission.query.filter_by(status="published", is_draft=False).count(),
+        "discovery_count": Submission.query.filter(Submission.status.in_(DISCOVERY_STATUSES), Submission.is_draft.is_(False)).count(),
         "user_count": User.query.count(),
     })
 
@@ -1370,17 +1531,13 @@ def is_plain_text_file(file_storage):
     if not file_storage:
         return True
     filename = file_storage.filename or ""
-    # allow typical text extensions
     allowed_extensions = (".txt", ".tex", ".csv", ".md", ".py", ".js", ".html", ".css", ".json")
     if filename.lower().endswith(allowed_extensions):
         return True
-    # also allow files with no extension but we can try to peek at content
-    # read a small chunk and see if it contains mostly printable characters
     try:
         file_storage.seek(0)
         sample = file_storage.read(1024)
-        file_storage.seek(0)  # reset
-        # if sample contains many non-ASCII and non-printable bytes, reject
+        file_storage.seek(0)
         text_chars = bytes(range(9, 14)) + bytes(range(32, 127))
         if isinstance(sample, bytes):
             if any(b not in text_chars for b in sample[:256]):
@@ -1401,7 +1558,6 @@ def tools_run():
         return jsonify({"error": "Tool not provided"}), 400
 
     if tool == "desk_review":
-        # Reject PDF or other binary uploads
         file_uploaded = request.files.get("file")
         if file_uploaded and not is_plain_text_file(file_uploaded):
             return jsonify({"error": "File type not supported. Please upload plain text files (TXT, TEX, CSV, MD) or paste the text directly."}), 400
@@ -1447,7 +1603,16 @@ def tools_run():
 @app.route("/api/admin/submissions")
 @admin_required
 def admin_submissions():
-    items = Submission.query.order_by(Submission.updated_at.desc()).limit(200).all()
+    scope = (request.args.get("scope") or "queue").strip().lower()
+    q = Submission.query
+    if scope == "queue":
+        q = q.filter(Submission.status.in_(ADMIN_QUEUE_STATUSES))
+    elif scope == "public":
+        q = q.filter(Submission.status.in_(PUBLIC_FEED_STATUSES))
+    else:
+        # default queue
+        q = q.filter(Submission.status.in_(ADMIN_QUEUE_STATUSES))
+    items = q.order_by(Submission.updated_at.desc()).limit(200).all()
     return jsonify({
         "submissions": [
             {
@@ -1471,12 +1636,18 @@ def admin_submission_status(sid):
     }
     if status not in allowed:
         return jsonify({"error": "Invalid status"}), 400
+    old_status = s.status
     s.status = status
-    if status == "published":
+    if status == "published" and not s.published_at:
         s.published_at = datetime.utcnow()
+    # If changing from draft to something else, ensure is_draft is False
+    if status in ("submitted", "in_discovery", "under_review", "published"):
+        s.is_draft = False
+    # Add editorial comment
+    add_editorial_comment(s.id, current_user, status)
     db.session.commit()
     if s.author_id:
-        create_notification(s.author_id, f"Submission status updated: {Submission.STATUS_LABELS.get(status, status)}", s.title)
+        create_notification(s.author_id, f"Paper status updated: {Submission.STATUS_LABELS.get(status, status)}", s.title)
         db.session.commit()
     return jsonify({"ok": True})
 
