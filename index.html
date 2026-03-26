@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#080c18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Journal">
+<meta name="description" content="The Journal — Independent Physics for citizen scientists and independent researchers.">
+<link rel="manifest" href="/manifest.json">
+<title>The Journal — Independent Physics</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="splash"><div class="diamond">&#x29C7;</div><h1>The Journal</h1><p>Independent Physics</p><div class="loading">Loading app...</div></div>
+<div id="root"></div>
+<script>
+window.__journalBoot = {
+  mounted: false,
+  hideSplash: function () {
+    var splash = document.getElementById('splash');
+    if (!splash) return;
+    splash.classList.add('hide');
+    setTimeout(function () {
+      if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+    }, 380);
+  },
+  showBootError: function (message) {
+    var splash = document.getElementById('splash');
+    if (!splash) return;
+    splash.className = 'boot-failed';
+    splash.innerHTML = '<div class="diamond">&#x29C7;</div><h1>The Journal</h1><p>Independent Physics</p><p class="boot-error">' + message + '</p><a href="/api/stats" class="boot-link">Check API Status</a>';
+  },
+  markMounted: function () {
+    this.mounted = true;
+    this.hideSplash();
+  }
+};
+window.addEventListener('error', function () {
+  if (!window.__journalBoot.mounted) {
+    window.__journalBoot.showBootError('The app hit a loading error. Refresh and try again.');
+  }
+});
+window.addEventListener('unhandledrejection', function () {
+  if (!window.__journalBoot.mounted) {
+    window.__journalBoot.showBootError('The app hit a loading error. Refresh and try again.');
+  }
+});
+</script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="/static/app.js" defer></script>
+<script>
+setTimeout(function(){
+  var r = document.getElementById('root');
+  var mounted = window.__journalBoot && window.__journalBoot.mounted;
+  if (!mounted && r && !r.hasChildNodes()) {
+    window.__journalBoot.showBootError('The app is taking too long to start. Refresh and try again.');
+  }
+}, 15000);
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
