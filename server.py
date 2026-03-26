@@ -45,13 +45,13 @@ app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
 if db_url.startswith('sqlite'):
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'connect_args': {'check_same_thread': False}}
 
-
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
-
 ADMIN_EMAIL = 'admin@journal.local'
 ADMIN_PASSWORD = 'change-me-now'
 ADMIN_NAME = 'Founding Editor'
+
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
 
 
 @app.before_request
@@ -119,7 +119,12 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(pw)
 
     def check_password(self, pw):
-        return check_password_hash(self.password_hash, pw)
+        try:
+            if not self.password_hash:
+                return False
+            return check_password_hash(self.password_hash, pw)
+        except Exception:
+            return False
 
     @property
     def initials(self):
@@ -161,62 +166,6 @@ class User(UserMixin, db.Model):
 @login_manager.user_loader
 def load_user(uid):
     return db.session.get(User, int(uid))
-
-
-def safe_check_password(user, password):
-    if not user or not password:
-        return False
-    try:
-        if not getattr(user, 'password_hash', None):
-            return False
-        return check_password_hash(user.password_hash, password)
-    except Exception:
-        return False
-
-
-def password_hash_is_usable(user):
-    if not user or not getattr(user, 'password_hash', None):
-        return False
-    try:
-        check_password_hash(user.password_hash, '__hash_probe__')
-        return True
-    except Exception:
-        return False
-
-
-def ensure_admin_account(force_password_reset=False):
-    user = User.query.filter_by(email=ADMIN_EMAIL).first()
-    changed = False
-
-    if not user:
-        user = User(
-            email=ADMIN_EMAIL,
-            display_name=ADMIN_NAME,
-            role='admin',
-        )
-        user.set_password(ADMIN_PASSWORD)
-        db.session.add(user)
-        db.session.commit()
-        db.session.refresh(user)
-        return user
-
-    if user.display_name != ADMIN_NAME:
-        user.display_name = ADMIN_NAME
-        changed = True
-
-    if user.role != 'admin':
-        user.role = 'admin'
-        changed = True
-
-    if force_password_reset or not password_hash_is_usable(user):
-        user.set_password(ADMIN_PASSWORD)
-        changed = True
-
-    if changed:
-        db.session.commit()
-        db.session.refresh(user)
-
-    return user
 
 
 class Category(db.Model):
@@ -422,6 +371,36 @@ def admin_required(f):
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return wrapped
+
+
+def ensure_admin_account(force_password_reset=True):
+    user = User.query.filter_by(email=ADMIN_EMAIL).first()
+    changed = False
+
+    if not user:
+        user = User(email=ADMIN_EMAIL, display_name=ADMIN_NAME, role='admin')
+        user.set_password(ADMIN_PASSWORD)
+        db.session.add(user)
+        db.session.commit()
+        db.session.refresh(user)
+        return user
+
+    if (user.display_name or '') != ADMIN_NAME:
+        user.display_name = ADMIN_NAME
+        changed = True
+    if (user.role or '') != 'admin':
+        user.role = 'admin'
+        changed = True
+
+    needs_reset = force_password_reset or (not user.password_hash) or (not user.check_password(ADMIN_PASSWORD))
+    if needs_reset:
+        user.set_password(ADMIN_PASSWORD)
+        changed = True
+
+    if changed:
+        db.session.commit()
+        db.session.refresh(user)
+    return user
 
 
 def resolve_submission(ref):
@@ -943,7 +922,6 @@ def register():
         user.set_password(pw)
         db.session.add(user)
         db.session.commit()
-        db.session.refresh(user)
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error': 'Email taken'}), 409
@@ -958,28 +936,21 @@ def login():
     pw = data.get('password', '')
     if not email or not pw:
         return jsonify({'error': 'Email and password required'}), 400
-    try:
-        if email == ADMIN_EMAIL:
-            user = ensure_admin_account(force_password_reset=False)
-            db.session.refresh(user)
-            if not safe_check_password(user, pw):
-                if pw == ADMIN_PASSWORD:
-                    user = ensure_admin_account(force_password_reset=True)
-                    db.session.refresh(user)
-                if not safe_check_password(user, pw):
-                    return jsonify({'error': 'Invalid credentials'}), 401
-        else:
-            user = User.query.filter_by(email=email).first()
-            if not user or not safe_check_password(user, pw):
-                return jsonify({'error': 'Invalid credentials'}), 401
-        if user.is_banned:
-            return jsonify({'error': 'Account restricted'}), 403
-        login_user(user, remember=True)
-        return jsonify({'user': user.to_dict()})
-    except Exception:
-        db.session.rollback()
-        app.logger.exception('login failed')
-        return jsonify({'error': 'Authentication failed'}), 500
+
+    if email == ADMIN_EMAIL:
+        user = ensure_admin_account(force_password_reset=True)
+        db.session.refresh(user)
+        if pw != ADMIN_PASSWORD or not user.check_password(ADMIN_PASSWORD):
+            return jsonify({'error': 'Invalid credentials'}), 401
+    else:
+        user = User.query.filter_by(email=email).first()
+        if not user or not user.check_password(pw):
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+    if user.is_banned:
+        return jsonify({'error': 'Account restricted'}), 403
+    login_user(user, remember=True)
+    return jsonify({'user': user.to_dict()})
 
 
 @app.route('/api/auth/logout', methods=['POST'])
@@ -1526,7 +1497,7 @@ def seed():
         if not Category.query.filter_by(slug=slug).first():
             db.session.add(Category(slug=slug, name=name, emoji=emoji))
     db.session.commit()
-    ensure_admin_account(force_password_reset=False)
+    ensure_admin_account(force_password_reset=True)
 
 
 with app.app_context():
