@@ -7,11 +7,10 @@ import io
 import csv
 import json
 import math
-import random
 import re
 import uuid
 import threading
-from datetime import datetime, timedelta          # <-- added timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from functools import wraps
 
@@ -53,7 +52,7 @@ app.config["SESSION_COOKIE_SECURE"] = secure_cookies
 app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
 app.config["REMEMBER_COOKIE_SECURE"] = secure_cookies
 app.config["REMEMBER_COOKIE_HTTPONLY"] = True
-app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)   # now works
+app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
 
 if db_url.startswith("sqlite"):
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -641,7 +640,7 @@ def ocm_analysis(series):
     wb = 500
     eps = 1e-8
     if n < wb + 10:
-        return {'error': 'Need at least 600 data points for OCM analysis.'}
+        return {'error': 'Need at least 600 numeric values for OCM analysis.'}
     z = [0.0] * n
     for t in range(wz, n):
         window = series[t-wz:t]
@@ -679,7 +678,7 @@ def er_analysis(series):
     threshold = 0.5
     eps = 1e-8
     if n < wz * 3:
-        return {'error': 'Need at least 300 data points for topology mapping.'}
+        return {'error': 'Need at least 300 numeric values for topology mapping.'}
     nodes = list(range(wz, n - wz, stride))
     segs = []
     for t in nodes:
@@ -730,7 +729,7 @@ def icm_analysis(series):
     wz = 200
     eps = 1e-8
     if n < wz * 3:
-        return {'error': 'Need at least 600 data points for invariant detection.'}
+        return {'error': 'Need at least 600 numeric values for invariant detection.'}
     z = [0.0] * n
     for t in range(wz, n):
         window = series[t-wz:t]
@@ -820,7 +819,6 @@ def clm_analysis(series):
     # Lightweight structural simulation preserving the spirit of the earlier CLM tool
     k = 7
     n = 64
-    rule = 110
     diff = 3
     def mk_ca(seed):
         state = [0] * n
@@ -836,8 +834,8 @@ def clm_analysis(series):
     ri = 0.0
     hist_kw = []
     hist_ge = []
-    if not series:
-        series = generate_duffing(1200)
+    if not series or len(series) < 10:
+        return {'error': 'Need at least 10 numeric values for CLM simulation. Please provide a time series or a CSV with numbers.'}
     mn = min(series)
     mx = max(series)
     rg = (mx - mn) or 1.0
@@ -1367,6 +1365,34 @@ def get_tool_input():
     return tool, text, series
 
 
+def is_plain_text_file(file_storage):
+    """Heuristic to reject binary files like PDFs."""
+    if not file_storage:
+        return True
+    filename = file_storage.filename or ""
+    # allow typical text extensions
+    allowed_extensions = (".txt", ".tex", ".csv", ".md", ".py", ".js", ".html", ".css", ".json")
+    if filename.lower().endswith(allowed_extensions):
+        return True
+    # also allow files with no extension but we can try to peek at content
+    # read a small chunk and see if it contains mostly printable characters
+    try:
+        file_storage.seek(0)
+        sample = file_storage.read(1024)
+        file_storage.seek(0)  # reset
+        # if sample contains many non-ASCII and non-printable bytes, reject
+        text_chars = bytes(range(9, 14)) + bytes(range(32, 127))
+        if isinstance(sample, bytes):
+            if any(b not in text_chars for b in sample[:256]):
+                return False
+        else:
+            # already string
+            pass
+    except Exception:
+        return False
+    return True
+
+
 @app.route("/api/tools/run", methods=["POST"])
 @api_login_required
 def tools_run():
@@ -1375,6 +1401,11 @@ def tools_run():
         return jsonify({"error": "Tool not provided"}), 400
 
     if tool == "desk_review":
+        # Reject PDF or other binary uploads
+        file_uploaded = request.files.get("file")
+        if file_uploaded and not is_plain_text_file(file_uploaded):
+            return jsonify({"error": "File type not supported. Please upload plain text files (TXT, TEX, CSV, MD) or paste the text directly."}), 400
+
         cleaned = (text or "").strip()
         if not cleaned:
             return jsonify({"error": "Paste manuscript text or upload a text file."}), 400
@@ -1390,15 +1421,23 @@ def tools_run():
         })
 
     if tool == "ocm":
+        if len(series) < 600:
+            return jsonify({"error": "Need at least 600 numeric values for OCM analysis."}), 400
         return jsonify(ocm_analysis(series))
 
     if tool == "er":
+        if len(series) < 300:
+            return jsonify({"error": "Need at least 300 numeric values for topology mapping."}), 400
         return jsonify(er_analysis(series))
 
     if tool == "icm":
+        if len(series) < 600:
+            return jsonify({"error": "Need at least 600 numeric values for invariant detection."}), 400
         return jsonify(icm_analysis(series))
 
     if tool == "clm":
+        if len(series) < 10:
+            return jsonify({"error": "Need at least 10 numeric values for CLM simulation."}), 400
         return jsonify(clm_analysis(series))
 
     return jsonify({"error": "Unknown tool"}), 400
