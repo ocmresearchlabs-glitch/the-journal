@@ -119,10 +119,7 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(pw)
 
     def check_password(self, pw):
-        try:
-            return check_password_hash(self.password_hash or '', pw)
-        except Exception:
-            return False
+        return check_password_hash(self.password_hash, pw)
 
     @property
     def initials(self):
@@ -164,6 +161,62 @@ class User(UserMixin, db.Model):
 @login_manager.user_loader
 def load_user(uid):
     return db.session.get(User, int(uid))
+
+
+def safe_check_password(user, password):
+    if not user or not password:
+        return False
+    try:
+        if not getattr(user, 'password_hash', None):
+            return False
+        return check_password_hash(user.password_hash, password)
+    except Exception:
+        return False
+
+
+def password_hash_is_usable(user):
+    if not user or not getattr(user, 'password_hash', None):
+        return False
+    try:
+        check_password_hash(user.password_hash, '__hash_probe__')
+        return True
+    except Exception:
+        return False
+
+
+def ensure_admin_account(force_password_reset=False):
+    user = User.query.filter_by(email=ADMIN_EMAIL).first()
+    changed = False
+
+    if not user:
+        user = User(
+            email=ADMIN_EMAIL,
+            display_name=ADMIN_NAME,
+            role='admin',
+        )
+        user.set_password(ADMIN_PASSWORD)
+        db.session.add(user)
+        db.session.commit()
+        db.session.refresh(user)
+        return user
+
+    if user.display_name != ADMIN_NAME:
+        user.display_name = ADMIN_NAME
+        changed = True
+
+    if user.role != 'admin':
+        user.role = 'admin'
+        changed = True
+
+    if force_password_reset or not password_hash_is_usable(user):
+        user.set_password(ADMIN_PASSWORD)
+        changed = True
+
+    if changed:
+        db.session.commit()
+        db.session.refresh(user)
+
+    return user
 
 
 class Category(db.Model):
@@ -347,73 +400,6 @@ def request_data():
     if request.form:
         return request.form.to_dict()
     return {}
-
-
-def safe_check_password(user, password: str) -> bool:
-    if not user or not password:
-        return False
-    try:
-        if not getattr(user, 'password_hash', None):
-            return False
-        return check_password_hash(user.password_hash, password)
-    except Exception:
-        return False
-
-
-def password_hash_is_usable(user) -> bool:
-    if not user or not getattr(user, 'password_hash', None):
-        return False
-    try:
-        check_password_hash(user.password_hash, '__hash_probe__')
-        return True
-    except Exception:
-        return False
-
-
-def ensure_admin_account(force_password_reset: bool = False):
-    user = User.query.filter_by(email=ADMIN_EMAIL).first()
-    changed = False
-
-    if not user:
-        user = User(
-            email=ADMIN_EMAIL,
-            display_name=ADMIN_NAME,
-            role='admin',
-            password_hash=generate_password_hash(ADMIN_PASSWORD),
-            bio='',
-            avatar_color='#5ea8ff',
-            orcid='',
-            reputation=1.0,
-            is_banned=False,
-        )
-        db.session.add(user)
-        changed = True
-    else:
-        if user.display_name != ADMIN_NAME:
-            user.display_name = ADMIN_NAME
-            changed = True
-
-        if user.role != 'admin':
-            user.role = 'admin'
-            changed = True
-
-        if user.is_banned:
-            user.is_banned = False
-            changed = True
-
-        if not user.avatar_color:
-            user.avatar_color = '#5ea8ff'
-            changed = True
-
-        if force_password_reset or not password_hash_is_usable(user) or not safe_check_password(user, ADMIN_PASSWORD):
-            user.set_password(ADMIN_PASSWORD)
-            changed = True
-
-    if changed:
-        db.session.commit()
-        db.session.refresh(user)
-
-    return user
 
 
 def api_login_required(f):
@@ -974,14 +960,14 @@ def login():
         return jsonify({'error': 'Email and password required'}), 400
     try:
         if email == ADMIN_EMAIL:
-            user = ensure_admin_account(force_password_reset=(pw == ADMIN_PASSWORD))
+            user = ensure_admin_account(force_password_reset=False)
             db.session.refresh(user)
-            if pw == ADMIN_PASSWORD and not safe_check_password(user, pw):
-                user.set_password(ADMIN_PASSWORD)
-                db.session.commit()
-                db.session.refresh(user)
             if not safe_check_password(user, pw):
-                return jsonify({'error': 'Invalid credentials'}), 401
+                if pw == ADMIN_PASSWORD:
+                    user = ensure_admin_account(force_password_reset=True)
+                    db.session.refresh(user)
+                if not safe_check_password(user, pw):
+                    return jsonify({'error': 'Invalid credentials'}), 401
         else:
             user = User.query.filter_by(email=email).first()
             if not user or not safe_check_password(user, pw):
@@ -991,8 +977,8 @@ def login():
         login_user(user, remember=True)
         return jsonify({'user': user.to_dict()})
     except Exception:
-        app.logger.exception('login failed')
         db.session.rollback()
+        app.logger.exception('login failed')
         return jsonify({'error': 'Authentication failed'}), 500
 
 
@@ -1540,7 +1526,7 @@ def seed():
         if not Category.query.filter_by(slug=slug).first():
             db.session.add(Category(slug=slug, name=name, emoji=emoji))
     db.session.commit()
-    ensure_admin_account(force_password_reset=True)
+    ensure_admin_account(force_password_reset=False)
 
 
 with app.app_context():
