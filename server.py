@@ -7,10 +7,11 @@ import io
 import csv
 import json
 import math
+import random
 import re
 import uuid
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta          # <-- added timedelta
 from pathlib import Path
 from functools import wraps
 
@@ -52,7 +53,7 @@ app.config["SESSION_COOKIE_SECURE"] = secure_cookies
 app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
 app.config["REMEMBER_COOKIE_SECURE"] = secure_cookies
 app.config["REMEMBER_COOKIE_HTTPONLY"] = True
-app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
+app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)   # now works
 
 if db_url.startswith("sqlite"):
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -113,7 +114,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default="member")
     bio = db.Column(db.Text, default="")
     avatar_color = db.Column(db.String(7), default="#5ea8ff")
-    orcid = db.Column(db.String(32), default="")          # <-- ORCID added
+    orcid = db.Column(db.String(32), default="")
     reputation = db.Column(db.Float, default=1.0)
     is_banned = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -159,7 +160,7 @@ class User(UserMixin, db.Model):
             "initials": self.initials,
             "bio": self.bio,
             "avatar_color": self.avatar_color,
-            "orcid": self.orcid or "",                  # <-- ORCID in response
+            "orcid": self.orcid or "",
             "reputation_score": round(self.reputation or 0, 2),
             "paper_count": paper_count,
             "review_count": review_count,
@@ -1006,7 +1007,6 @@ def update_profile():
         current_user.display_name = display_name[:120]
     current_user.bio = bio[:2000]
     if orcid:
-        # clean ORCID to only numbers and hyphens
         current_user.orcid = re.sub(r"[^0-9Xx-]", "", orcid)[:32]
     else:
         current_user.orcid = ""
