@@ -45,13 +45,13 @@ app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
 if db_url.startswith('sqlite'):
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'connect_args': {'check_same_thread': False}}
 
-ADMIN_EMAIL = 'admin@journal.local'
-ADMIN_PASSWORD = 'change-me-now'
-ADMIN_NAME = 'Founding Editor'
-
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
+
+ADMIN_EMAIL = 'admin@journal.local'
+ADMIN_PASSWORD = 'change-me-now'
+ADMIN_NAME = 'Founding Editor'
 
 
 @app.before_request
@@ -119,12 +119,7 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(pw)
 
     def check_password(self, pw):
-        try:
-            if not self.password_hash:
-                return False
-            return check_password_hash(self.password_hash, pw)
-        except Exception:
-            return False
+        return check_password_hash(self.password_hash, pw)
 
     @property
     def initials(self):
@@ -373,7 +368,28 @@ def admin_required(f):
     return wrapped
 
 
-def ensure_admin_account(force_password_reset=True):
+def safe_check_password(user, password: str) -> bool:
+    if not user or not password:
+        return False
+    try:
+        if not getattr(user, 'password_hash', None):
+            return False
+        return check_password_hash(user.password_hash, password)
+    except Exception:
+        return False
+
+
+def password_hash_is_usable(user) -> bool:
+    if not user or not getattr(user, 'password_hash', None):
+        return False
+    try:
+        check_password_hash(user.password_hash, '__hash_probe__')
+        return True
+    except Exception:
+        return False
+
+
+def ensure_admin_account(force_password_reset: bool = False):
     user = User.query.filter_by(email=ADMIN_EMAIL).first()
     changed = False
 
@@ -392,7 +408,7 @@ def ensure_admin_account(force_password_reset=True):
         user.role = 'admin'
         changed = True
 
-    needs_reset = force_password_reset or (not user.password_hash) or (not user.check_password(ADMIN_PASSWORD))
+    needs_reset = force_password_reset or (not password_hash_is_usable(user))
     if needs_reset:
         user.set_password(ADMIN_PASSWORD)
         changed = True
@@ -922,6 +938,7 @@ def register():
         user.set_password(pw)
         db.session.add(user)
         db.session.commit()
+        db.session.refresh(user)
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error': 'Email taken'}), 409
@@ -936,21 +953,27 @@ def login():
     pw = data.get('password', '')
     if not email or not pw:
         return jsonify({'error': 'Email and password required'}), 400
-
-    if email == ADMIN_EMAIL:
-        user = ensure_admin_account(force_password_reset=True)
-        db.session.refresh(user)
-        if pw != ADMIN_PASSWORD or not user.check_password(ADMIN_PASSWORD):
-            return jsonify({'error': 'Invalid credentials'}), 401
-    else:
-        user = User.query.filter_by(email=email).first()
-        if not user or not user.check_password(pw):
-            return jsonify({'error': 'Invalid credentials'}), 401
-
-    if user.is_banned:
-        return jsonify({'error': 'Account restricted'}), 403
-    login_user(user, remember=True)
-    return jsonify({'user': user.to_dict()})
+    try:
+        if email == ADMIN_EMAIL:
+            user = ensure_admin_account(force_password_reset=False)
+            db.session.refresh(user)
+            if pw == ADMIN_PASSWORD and not safe_check_password(user, pw):
+                user = ensure_admin_account(force_password_reset=True)
+                db.session.refresh(user)
+            if not safe_check_password(user, pw):
+                return jsonify({'error': 'Invalid credentials'}), 401
+        else:
+            user = User.query.filter_by(email=email).first()
+            if not user or not safe_check_password(user, pw):
+                return jsonify({'error': 'Invalid credentials'}), 401
+        if user.is_banned:
+            return jsonify({'error': 'Account restricted'}), 403
+        login_user(user, remember=True)
+        return jsonify({'user': user.to_dict()})
+    except Exception:
+        app.logger.exception('login failed')
+        db.session.rollback()
+        return jsonify({'error': 'Authentication failed'}), 500
 
 
 @app.route('/api/auth/logout', methods=['POST'])
