@@ -236,7 +236,7 @@ class Submission(db.Model):
         "revised": "#5ea8ff",
     }
 
-    def to_card(self, uid=None):
+    def to_card(self, uid=None, full_abstract=False):
         lc = Like.query.filter_by(submission_id=self.id).count()
         cc = Comment.query.filter_by(submission_id=self.id).count()
         rc = Review.query.filter_by(submission_id=self.id).count()
@@ -244,7 +244,7 @@ class Submission(db.Model):
             "id": self.id,
             "blind_id": self.blind_id,
             "title": self.title,
-            "abstract": (self.abstract or "")[:300],
+            "abstract": self.abstract if full_abstract else (self.abstract or "")[:300],
             "status": self.status,
             "status_label": self.STATUS_LABELS.get(self.status, self.status),
             "status_color": self.STATUS_COLORS.get(self.status, "#6b7db3"),
@@ -1148,65 +1148,70 @@ def builder_drafts():
 @app.route("/api/submissions", methods=["POST"])
 @api_login_required
 def create_submission():
-    if request.content_type and "multipart/form-data" in request.content_type:
-        d = request.form
-        uploaded_text = read_uploaded_text()
-        title = (d.get("title") or "").strip()
-        abstract = (d.get("abstract") or "").strip()
-        body_text = (d.get("body_text") or "").strip()
-        if not body_text and uploaded_text:
-            body_text = uploaded_text[:120000]
-        elif uploaded_text:
-            body_text = (body_text + "\n\n" + uploaded_text[:60000]).strip()
-        payload = {
-            "title": title,
-            "abstract": abstract,
-            "body_text": body_text,
-            "tags": (d.get("tags") or "").strip(),
-            "category_id": category_from_payload(d),
-            "is_draft": parse_bool(d.get("is_draft", "true")),
-        }
-    else:
-        d = request.get_json(silent=True) or {}
-        payload = {
-            "title": (d.get("title") or "").strip(),
-            "abstract": (d.get("abstract") or "").strip(),
-            "body_text": (d.get("body_text") or "").strip(),
-            "tags": (d.get("tags") or "").strip(),
-            "category_id": category_from_payload(d),
-            "is_draft": parse_bool(d.get("is_draft", "true")),
-        }
+    try:
+        if request.content_type and "multipart/form-data" in request.content_type:
+            d = request.form
+            uploaded_text = read_uploaded_text()
+            title = (d.get("title") or "").strip()
+            abstract = (d.get("abstract") or "").strip()
+            body_text = (d.get("body_text") or "").strip()
+            if not body_text and uploaded_text:
+                body_text = uploaded_text[:120000]
+            elif uploaded_text:
+                body_text = (body_text + "\n\n" + uploaded_text[:60000]).strip()
+            payload = {
+                "title": title,
+                "abstract": abstract,
+                "body_text": body_text,
+                "tags": (d.get("tags") or "").strip(),
+                "category_id": category_from_payload(d),
+                "is_draft": parse_bool(d.get("is_draft", "true")),
+            }
+        else:
+            d = request.get_json(silent=True) or {}
+            payload = {
+                "title": (d.get("title") or "").strip(),
+                "abstract": (d.get("abstract") or "").strip(),
+                "body_text": (d.get("body_text") or "").strip(),
+                "tags": (d.get("tags") or "").strip(),
+                "category_id": category_from_payload(d),
+                "is_draft": parse_bool(d.get("is_draft", "true")),
+            }
 
-    if not payload["title"] or not payload["abstract"]:
-        return jsonify({"error": "Title and abstract required"}), 400
-    if not payload["body_text"]:
-        payload["body_text"] = payload["abstract"]
+        if not payload["title"] or not payload["abstract"]:
+            return jsonify({"error": "Title and abstract required"}), 400
+        if not payload["body_text"]:
+            payload["body_text"] = payload["abstract"]
 
-    sub = Submission(
-        blind_id=uuid.uuid4().hex[:12].upper(),
-        title=payload["title"],
-        abstract=payload["abstract"],
-        body_text=payload["body_text"],
-        tags=payload["tags"],
-        author_id=current_user.id,
-        category_id=payload["category_id"],
-        is_draft=payload["is_draft"],
-        status="draft" if payload["is_draft"] else "submitted",
-    )
-    db.session.add(sub)
-    desk = None
-    if not payload["is_draft"]:
-        desk = run_desk_review(sub.title, sub.abstract, sub.body_text)
-        db.session.add(DeskDecision(
-            submission_id=sub.id,
-            decision=desk["recommendation"],
-            overall_score=desk["overall_score"],
-            summary=desk["summary"],
-            encouragement=desk["encouragement"],
-            scores_json=json.dumps(desk["scores"]),
-        ))
-    db.session.commit()
-    return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "desk_review": desk}), 201
+        sub = Submission(
+            blind_id=uuid.uuid4().hex[:12].upper(),
+            title=payload["title"],
+            abstract=payload["abstract"],
+            body_text=payload["body_text"],
+            tags=payload["tags"],
+            author_id=current_user.id,
+            category_id=payload["category_id"],
+            is_draft=payload["is_draft"],
+            status="draft" if payload["is_draft"] else "submitted",
+        )
+        db.session.add(sub)
+        desk = None
+        if not payload["is_draft"]:
+            desk = run_desk_review(sub.title, sub.abstract, sub.body_text)
+            db.session.add(DeskDecision(
+                submission_id=sub.id,
+                decision=desk["recommendation"],
+                overall_score=desk["overall_score"],
+                summary=desk["summary"],
+                encouragement=desk["encouragement"],
+                scores_json=json.dumps(desk["scores"]),
+            ))
+        db.session.commit()
+        return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "desk_review": desk}), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Submission creation failed")
+        return jsonify({"error": "Submission failed", "detail": str(e)}), 500
 
 
 @app.route("/api/submissions/<bid>", methods=["GET", "PUT", "DELETE"])
@@ -1232,49 +1237,57 @@ def submission_detail_edit_delete(bid):
         return jsonify({"error": "Not allowed"}), 403
 
     if request.method == "DELETE":
-        Like.query.filter_by(submission_id=sub.id).delete()
-        Bookmark.query.filter_by(submission_id=sub.id).delete()
-        Comment.query.filter_by(submission_id=sub.id).delete()
-        Review.query.filter_by(submission_id=sub.id).delete()
-        DeskDecision.query.filter_by(submission_id=sub.id).delete()
-        db.session.delete(sub)
-        db.session.commit()
-        return jsonify({"ok": True})
+        try:
+            Like.query.filter_by(submission_id=sub.id).delete()
+            Bookmark.query.filter_by(submission_id=sub.id).delete()
+            Comment.query.filter_by(submission_id=sub.id).delete()
+            Review.query.filter_by(submission_id=sub.id).delete()
+            DeskDecision.query.filter_by(submission_id=sub.id).delete()
+            db.session.delete(sub)
+            db.session.commit()
+            return jsonify({"ok": True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "Delete failed", "detail": str(e)}), 500
 
     data = request_data()
-    if "title" in data:
-        sub.title = (data.get("title") or "").strip() or sub.title
-    if "abstract" in data:
-        sub.abstract = (data.get("abstract") or "").strip()
-    if "body_text" in data or "body" in data:
-        sub.body_text = (data.get("body_text") or data.get("body") or "").strip()
-    if "tags" in data:
-        sub.tags = (data.get("tags") or "").strip()
-    if "category_id" in data or "category" in data:
-        try:
-            sub.category_id = int(data.get("category_id") or data.get("category") or sub.category_id)
-        except Exception:
-            pass
-    if "is_draft" in data:
-        sub.is_draft = parse_bool(data.get("is_draft"))
-        if sub.is_draft:
-            sub.status = "draft"
-    if "submit_for_review" in data and parse_bool(data.get("submit_for_review")):
-        if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
-            return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
-        sub.is_draft = False
-        sub.status = "submitted"
-        desk = run_desk_review(sub.title or "", sub.abstract or "", sub.body_text or "")
-        db.session.add(DeskDecision(
-            submission_id=sub.id,
-            decision=desk["recommendation"],
-            overall_score=desk["overall_score"],
-            summary=desk["summary"],
-            encouragement=desk["encouragement"],
-            scores_json=json.dumps(desk["scores"]),
-        ))
-    db.session.commit()
-    return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "ok": True})
+    try:
+        if "title" in data:
+            sub.title = (data.get("title") or "").strip() or sub.title
+        if "abstract" in data:
+            sub.abstract = (data.get("abstract") or "").strip()
+        if "body_text" in data or "body" in data:
+            sub.body_text = (data.get("body_text") or data.get("body") or "").strip()
+        if "tags" in data:
+            sub.tags = (data.get("tags") or "").strip()
+        if "category_id" in data or "category" in data:
+            try:
+                sub.category_id = int(data.get("category_id") or data.get("category") or sub.category_id)
+            except Exception:
+                pass
+        if "is_draft" in data:
+            sub.is_draft = parse_bool(data.get("is_draft"))
+            if sub.is_draft:
+                sub.status = "draft"
+        if "submit_for_review" in data and parse_bool(data.get("submit_for_review")):
+            if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
+                return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
+            sub.is_draft = False
+            sub.status = "submitted"
+            desk = run_desk_review(sub.title or "", sub.abstract or "", sub.body_text or "")
+            db.session.add(DeskDecision(
+                submission_id=sub.id,
+                decision=desk["recommendation"],
+                overall_score=desk["overall_score"],
+                summary=desk["summary"],
+                encouragement=desk["encouragement"],
+                scores_json=json.dumps(desk["scores"]),
+            ))
+        db.session.commit()
+        return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Update failed", "detail": str(e)}), 500
 
 
 @app.route("/api/submissions/<bid>/public")
@@ -1503,50 +1516,54 @@ def is_plain_text_file(file_storage):
 @app.route("/api/tools/run", methods=["POST"])
 @api_login_required
 def tools_run():
-    tool, text, series = get_tool_input()
-    if not tool:
-        return jsonify({"error": "Tool not provided"}), 400
+    try:
+        tool, text, series = get_tool_input()
+        if not tool:
+            return jsonify({"error": "Tool not provided"}), 400
 
-    if tool == "desk_review":
-        file_uploaded = request.files.get("file")
-        if file_uploaded and not is_plain_text_file(file_uploaded):
-            return jsonify({"error": "File type not supported. Please upload plain text files (TXT, TEX, CSV, MD) or paste the text directly."}), 400
+        if tool == "desk_review":
+            file_uploaded = request.files.get("file")
+            if file_uploaded and not is_plain_text_file(file_uploaded):
+                return jsonify({"error": "File type not supported. Please upload plain text files (TXT, TEX, CSV, MD) or paste the text directly."}), 400
 
-        cleaned = (text or "").strip()
-        if not cleaned:
-            return jsonify({"error": "Paste manuscript text or upload a text file."}), 400
-        lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
-        title = lines[0][:500] if lines else "Untitled"
-        abstract = lines[1][:2000] if len(lines) > 1 else cleaned[:500]
-        body = cleaned
-        desk = run_desk_review(title, abstract, body)
-        return jsonify({
-            "classification": desk["recommendation"].upper(),
-            "summary": desk["summary"],
-            "details": desk
-        })
+            cleaned = (text or "").strip()
+            if not cleaned:
+                return jsonify({"error": "Paste manuscript text or upload a text file."}), 400
+            lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
+            title = lines[0][:500] if lines else "Untitled"
+            abstract = lines[1][:2000] if len(lines) > 1 else cleaned[:500]
+            body = cleaned
+            desk = run_desk_review(title, abstract, body)
+            return jsonify({
+                "classification": desk["recommendation"].upper(),
+                "summary": desk["summary"],
+                "details": desk
+            })
 
-    if tool == "ocm":
-        if len(series) < 600:
-            return jsonify({"error": "Need at least 600 numeric values for OCM analysis."}), 400
-        return jsonify(ocm_analysis(series))
+        if tool == "ocm":
+            if len(series) < 600:
+                return jsonify({"error": "Need at least 600 numeric values for OCM analysis."}), 400
+            return jsonify(ocm_analysis(series))
 
-    if tool == "er":
-        if len(series) < 300:
-            return jsonify({"error": "Need at least 300 numeric values for topology mapping."}), 400
-        return jsonify(er_analysis(series))
+        if tool == "er":
+            if len(series) < 300:
+                return jsonify({"error": "Need at least 300 numeric values for topology mapping."}), 400
+            return jsonify(er_analysis(series))
 
-    if tool == "icm":
-        if len(series) < 600:
-            return jsonify({"error": "Need at least 600 numeric values for invariant detection."}), 400
-        return jsonify(icm_analysis(series))
+        if tool == "icm":
+            if len(series) < 600:
+                return jsonify({"error": "Need at least 600 numeric values for invariant detection."}), 400
+            return jsonify(icm_analysis(series))
 
-    if tool == "clm":
-        if len(series) < 10:
-            return jsonify({"error": "Need at least 10 numeric values for CLM simulation."}), 400
-        return jsonify(clm_analysis(series))
+        if tool == "clm":
+            if len(series) < 10:
+                return jsonify({"error": "Need at least 10 numeric values for CLM simulation."}), 400
+            return jsonify(clm_analysis(series))
 
-    return jsonify({"error": "Unknown tool"}), 400
+        return jsonify({"error": "Unknown tool"}), 400
+    except Exception as e:
+        app.logger.exception("Tool execution failed")
+        return jsonify({"error": "Tool execution failed", "detail": str(e)}), 500
 
 
 # --- Admin ---
@@ -1585,32 +1602,39 @@ def admin_submission_status(sid):
     }
     if status not in allowed:
         return jsonify({"error": "Invalid status"}), 400
-    old_status = s.status
-    s.status = status
-    if status == "published" and not s.published_at:
-        s.published_at = datetime.utcnow()
-    if status in ("submitted", "in_discovery", "under_review", "published"):
-        s.is_draft = False
-    add_editorial_comment(s.id, current_user, status)
-    db.session.commit()
-    if s.author_id:
-        create_notification(s.author_id, f"Paper status updated: {Submission.STATUS_LABELS.get(status, status)}", s.title)
+    try:
+        s.status = status
+        if status == "published" and not s.published_at:
+            s.published_at = datetime.utcnow()
+        if status in ("submitted", "in_discovery", "under_review", "published"):
+            s.is_draft = False
+        add_editorial_comment(s.id, current_user, status)
         db.session.commit()
-    return jsonify({"ok": True})
+        if s.author_id:
+            create_notification(s.author_id, f"Paper status updated: {Submission.STATUS_LABELS.get(status, status)}", s.title)
+            db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Status update failed", "detail": str(e)}), 500
 
 
 @app.route("/api/admin/submissions/<int:sid>", methods=["DELETE"])
 @admin_required
 def admin_delete_submission(sid):
     s = Submission.query.get_or_404(sid)
-    Like.query.filter_by(submission_id=s.id).delete()
-    Bookmark.query.filter_by(submission_id=s.id).delete()
-    Comment.query.filter_by(submission_id=s.id).delete()
-    Review.query.filter_by(submission_id=s.id).delete()
-    DeskDecision.query.filter_by(submission_id=s.id).delete()
-    db.session.delete(s)
-    db.session.commit()
-    return jsonify({"ok": True})
+    try:
+        Like.query.filter_by(submission_id=s.id).delete()
+        Bookmark.query.filter_by(submission_id=s.id).delete()
+        Comment.query.filter_by(submission_id=s.id).delete()
+        Review.query.filter_by(submission_id=s.id).delete()
+        DeskDecision.query.filter_by(submission_id=s.id).delete()
+        db.session.delete(s)
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Delete failed", "detail": str(e)}), 500
 
 
 @app.route("/api/admin/users")
@@ -1630,9 +1654,13 @@ def admin_user_role(uid):
     role = (d.get("role") or "").strip()
     if role not in ("member", "admin"):
         return jsonify({"error": "Invalid role"}), 400
-    u.role = role
-    db.session.commit()
-    return jsonify({"ok": True})
+    try:
+        u.role = role
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Role update failed", "detail": str(e)}), 500
 
 
 @app.route("/api/admin/users/<int:uid>/ban", methods=["POST"])
@@ -1641,18 +1669,26 @@ def admin_user_ban(uid):
     if current_user.id == uid:
         return jsonify({"error": "Cannot ban yourself"}), 400
     u = User.query.get_or_404(uid)
-    u.is_banned = True
-    db.session.commit()
-    return jsonify({"ok": True})
+    try:
+        u.is_banned = True
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Ban failed", "detail": str(e)}), 500
 
 
 @app.route("/api/admin/users/<int:uid>/unban", methods=["POST"])
 @admin_required
 def admin_user_unban(uid):
     u = User.query.get_or_404(uid)
-    u.is_banned = False
-    db.session.commit()
-    return jsonify({"ok": True})
+    try:
+        u.is_banned = False
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Unban failed", "detail": str(e)}), 500
 
 
 @app.route("/api/admin/users/<int:uid>", methods=["DELETE"])
@@ -1662,29 +1698,32 @@ def admin_user_delete(uid):
         return jsonify({"error": "Cannot delete yourself"}), 400
 
     u = User.query.get_or_404(uid)
+    try:
+        submission_ids = [s.id for s in Submission.query.filter_by(author_id=u.id).all()]
+        if submission_ids:
+            Like.query.filter(Like.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+            Bookmark.query.filter(Bookmark.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+            Comment.query.filter(Comment.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+            Review.query.filter(Review.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+            DeskDecision.query.filter(DeskDecision.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+            Submission.query.filter(Submission.id.in_(submission_ids)).delete(synchronize_session=False)
 
-    submission_ids = [s.id for s in Submission.query.filter_by(author_id=u.id).all()]
-    if submission_ids:
-        Like.query.filter(Like.submission_id.in_(submission_ids)).delete(synchronize_session=False)
-        Bookmark.query.filter(Bookmark.submission_id.in_(submission_ids)).delete(synchronize_session=False)
-        Comment.query.filter(Comment.submission_id.in_(submission_ids)).delete(synchronize_session=False)
-        Review.query.filter(Review.submission_id.in_(submission_ids)).delete(synchronize_session=False)
-        DeskDecision.query.filter(DeskDecision.submission_id.in_(submission_ids)).delete(synchronize_session=False)
-        Submission.query.filter(Submission.id.in_(submission_ids)).delete(synchronize_session=False)
+        Like.query.filter_by(user_id=u.id).delete()
+        Bookmark.query.filter_by(user_id=u.id).delete()
+        Comment.query.filter_by(author_id=u.id).delete()
+        Review.query.filter_by(reviewer_id=u.id).delete()
+        Notification.query.filter_by(user_id=u.id).delete()
 
-    Like.query.filter_by(user_id=u.id).delete()
-    Bookmark.query.filter_by(user_id=u.id).delete()
-    Comment.query.filter_by(author_id=u.id).delete()
-    Review.query.filter_by(reviewer_id=u.id).delete()
-    Notification.query.filter_by(user_id=u.id).delete()
+        conn = db.session.connection()
+        conn.execute(user_follows.delete().where(user_follows.c.follower_id == u.id))
+        conn.execute(user_follows.delete().where(user_follows.c.followed_id == u.id))
 
-    conn = db.session.connection()
-    conn.execute(user_follows.delete().where(user_follows.c.follower_id == u.id))
-    conn.execute(user_follows.delete().where(user_follows.c.followed_id == u.id))
-
-    db.session.delete(u)
-    db.session.commit()
-    return jsonify({"ok": True})
+        db.session.delete(u)
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "User deletion failed", "detail": str(e)}), 500
 
 
 @app.route("/api/admin/reset-db", methods=["POST"])
@@ -1692,23 +1731,27 @@ def admin_user_delete(uid):
 def admin_reset_db():
     admin_ids = [u.id for u in User.query.filter_by(role="admin").all()]
 
-    Like.query.delete()
-    Bookmark.query.delete()
-    Comment.query.delete()
-    Review.query.delete()
-    DeskDecision.query.delete()
-    Notification.query.delete()
-    Submission.query.delete()
+    try:
+        Like.query.delete()
+        Bookmark.query.delete()
+        Comment.query.delete()
+        Review.query.delete()
+        DeskDecision.query.delete()
+        Notification.query.delete()
+        Submission.query.delete()
 
-    conn = db.session.connection()
-    conn.execute(user_follows.delete())
+        conn = db.session.connection()
+        conn.execute(user_follows.delete())
 
-    for u in User.query.all():
-        if u.id not in admin_ids:
-            db.session.delete(u)
+        for u in User.query.all():
+            if u.id not in admin_ids:
+                db.session.delete(u)
 
-    db.session.commit()
-    return jsonify({"ok": True})
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Reset failed", "detail": str(e)}), 500
 
 
 # --- Seed + boot ---
