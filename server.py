@@ -1252,6 +1252,8 @@ def submission_detail_edit_delete(bid):
             return jsonify({"error": "Delete failed", "detail": str(e)}), 500
 
     data = request_data()
+    # --- DEBUG: Print the received data to server logs ---
+    print(f"[DEBUG] PUT data for {bid}: {json.dumps(data, default=str)[:500]}")
     try:
         if "title" in data:
             sub.title = (data.get("title") or "").strip() or sub.title
@@ -1259,6 +1261,7 @@ def submission_detail_edit_delete(bid):
             sub.abstract = (data.get("abstract") or "").strip()
         if "body_text" in data or "body" in data:
             sub.body_text = (data.get("body_text") or data.get("body") or "").strip()
+            print(f"[DEBUG] body_text set to: {sub.body_text[:200] if sub.body_text else 'EMPTY'}")
         if "tags" in data:
             sub.tags = (data.get("tags") or "").strip()
         if "category_id" in data or "category" in data:
@@ -1275,6 +1278,7 @@ def submission_detail_edit_delete(bid):
             # If the body_text is empty (or only whitespace), copy the abstract.
             if not sub.body_text or not sub.body_text.strip():
                 sub.body_text = sub.abstract
+                print(f"[DEBUG] body_text was empty, copied abstract")
             # Now validate
             if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
                 return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
@@ -1293,6 +1297,7 @@ def submission_detail_edit_delete(bid):
         return jsonify({"submission": sub.to_card(current_user.id, full_abstract=True), "ok": True})
     except Exception as e:
         db.session.rollback()
+        app.logger.exception("Update failed")
         return jsonify({"error": "Update failed", "detail": str(e)}), 500
 
 
