@@ -40,7 +40,6 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
   <script type="text/babel">
-// Added useMemo to the destructuring
 const {useState,useEffect,useRef,useCallback,useMemo,Component} = React;
 
 class ErrorBoundary extends Component {
@@ -78,7 +77,13 @@ function copyText(text){if(navigator.clipboard&&navigator.clipboard.writeText){r
 function formatBibTeX(p){const author=(p.author&&p.author.display_name)||'Anonymous';const year=(p.published_at||p.created_at||'').slice(0,4)||new Date().getFullYear();const key=(author.split(' ')[0]||'journal').toLowerCase()+year;return '@article{'+key+',\n  title = {'+(p.title||'Untitled')+'},\n  author = {'+author+'},\n  journal = {The Journal},\n  year = {'+year+'},\n  url = {'+window.location.origin+'}\n}';}
 function similarityScore(a,b){const words=function(x){return String(x||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);};const aw=new Set(words((a.title||'')+' '+(a.abstract||'')));const bw=words((b.title||'')+' '+(b.abstract||''));let hit=0;bw.forEach(function(w){if(aw.has(w))hit++;});return hit;}
 
-const API={get(url){return new Promise(function(r){const x=new XMLHttpRequest();x.open("GET",url,true);x.withCredentials=true;x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send();});},post(url,body){return new Promise(function(r){const x=new XMLHttpRequest();x.open("POST",url,true);x.withCredentials=true;x.setRequestHeader("Content-Type","application/json");x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send(JSON.stringify(body||{}));});},put(url,body){return new Promise(function(r){const x=new XMLHttpRequest();x.open("PUT",url,true);x.withCredentials=true;x.setRequestHeader("Content-Type","application/json");x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send(JSON.stringify(body||{}));});},del(url){return new Promise(function(r){const x=new XMLHttpRequest();x.open("DELETE",url,true);x.withCredentials=true;x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send();});},postForm(url,fd){return new Promise(function(r){const x=new XMLHttpRequest();x.open("POST",url,true);x.withCredentials=true;x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({error:"Parse error"});}};x.onerror=function(){r({error:"Network error"});};x.send(fd);});}};
+const API={
+  get(url){return new Promise(function(r){const x=new XMLHttpRequest();x.open("GET",url,true);x.withCredentials=true;x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send();});},
+  post(url,body){return new Promise(function(r){const x=new XMLHttpRequest();x.open("POST",url,true);x.withCredentials=true;x.setRequestHeader("Content-Type","application/json");x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send(JSON.stringify(body||{}));});},
+  put(url,body){return new Promise(function(r){const x=new XMLHttpRequest();x.open("PUT",url,true);x.withCredentials=true;x.setRequestHeader("Content-Type","application/json");x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send(JSON.stringify(body||{}));});},
+  del(url){return new Promise(function(r){const x=new XMLHttpRequest();x.open("DELETE",url,true);x.withCredentials=true;x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({});}};x.onerror=function(){r({});};x.send();});},
+  postForm(url,fd){return new Promise(function(r){const x=new XMLHttpRequest();x.open("POST",url,true);x.withCredentials=true;x.onload=function(){try{r(JSON.parse(x.responseText));}catch(e){r({error:"Parse error"});}};x.onerror=function(){r({error:"Network error"});};x.send(fd);});}
+};
 function HIcon({d,s=17,f}){return <svg width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;}
 function Av({user,size=36}){const i=user&&user.initials?user.initials:((user&&user.display_name?user.display_name:"??").split(" ").map(x=>x[0]).join("").toUpperCase().slice(0,2)||"??");const c=user&&user.avatar_color?user.avatar_color:"#5ea8ff";const avatarFile=user&&user.avatar_filename?`/static/avatars/${user.avatar_filename}`:null;if(avatarFile){return<img src={avatarFile} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",flexShrink:0}} alt="avatar"/>}return<div style={{width:size,height:size,borderRadius:"50%",background:"linear-gradient(135deg,"+c+","+c+"88)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.36,flexShrink:0}}>{i}</div>;}
 function Badge({label,color}){return<span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:(color||"#6b7db3")+"15",color:color||"#6b7db3",border:"1px solid "+(color||"#6b7db3")+"30"}}><span style={{width:5,height:5,borderRadius:"50%",background:color||"#6b7db3"}}/>{label}</span>;}
@@ -226,13 +231,13 @@ function ToolRunner({tool,onBack,useApi}){
       return;
     }
     sL(true);
-    sR(null); // clear previous result
+    sR(null);
     const fd=new FormData();
     fd.append("tool",tool.id);
     fd.append("input",input||"");
     if(file)fd.append("file",file);
     try {
-      const res=await postForm("/api/tools/run",fd);
+      const res=await API.postForm("/api/tools/run",fd);
       sR(res);
     } catch (err) {
       sR({error: "Request failed: "+err});
@@ -256,7 +261,7 @@ function AdminDash({onBack,onToast}){
   useEffect(()=>{load();},[load]);
   const setStatus=(id,status)=>{API.post("/api/admin/submissions/"+id+"/status",{status}).then(d=>{if(d&&d.ok){flash("Updated");load();}else{flash(d.error||"Failed");}});};
   const delSub=id=>{if(!confirm("Delete this submission?"))return;API.del("/api/admin/submissions/"+id).then(d=>{if(d&&d.ok){flash("Deleted");load();}else{flash(d.error||"Failed");}});};
-  const aiReview=sub=>{sRV(prev=>({...prev,[sub.id]:true}));const fetchFull=sub&&sub.blind_id?API.get("/api/submissions/"+sub.blind_id):Promise.resolve(null);fetchFull.then(full=>{const submission=full&&full.submission?full.submission:sub;const text=[submission.title||"",submission.abstract||"",submission.body_text||""].join("\n\n");const fd=new FormData();fd.append("tool","desk_review");fd.append("input",text);return postForm("/api/tools/run",fd);}).then(res=>{sRV(prev=>({...prev,[sub.id]:false}));if(res&&!res.error){sRR(prev=>({...prev,[sub.id]:res}));}else{flash(res.error||"Review failed");}}).catch(()=>{sRV(prev=>({...prev,[sub.id]:false}));flash("Review failed");});};
+  const aiReview=sub=>{sRV(prev=>({...prev,[sub.id]:true}));const fetchFull=sub&&sub.blind_id?API.get("/api/submissions/"+sub.blind_id):Promise.resolve(null);fetchFull.then(full=>{const submission=full&&full.submission?full.submission:sub;const text=[submission.title||"",submission.abstract||"",submission.body_text||""].join("\n\n");const fd=new FormData();fd.append("tool","desk_review");fd.append("input",text);return API.postForm("/api/tools/run",fd);}).then(res=>{sRV(prev=>({...prev,[sub.id]:false}));if(res&&!res.error){sRR(prev=>({...prev,[sub.id]:res}));}else{flash(res.error||"Review failed");}}).catch(()=>{sRV(prev=>({...prev,[sub.id]:false}));flash("Review failed");});};
   const setRole=(id,role)=>{API.post("/api/admin/users/"+id+"/role",{role}).then(d=>{if(d&&d.ok){flash("Updated");load();}else{flash(d.error||"Failed");}});};
   const banUser=(id,ban)=>{API.post("/api/admin/users/"+id+(ban?"/ban":"/unban"),{}).then(d=>{if(d&&d.ok){flash("Updated");load();}else{flash(d.error||"Failed");}});};
   const delUser=id=>{if(!confirm("Delete this user?"))return;API.del("/api/admin/users/"+id).then(d=>{if(d&&d.ok){flash("Deleted");load();}else{flash(d.error||"Failed");}});};
@@ -313,7 +318,7 @@ root.render(
 setTimeout(()=>{const s=document.getElementById("splash");if(s)s.classList.add("hide");},600);
   </script>
   <script>
-    setTimeout(function(){var r=document.getElementById('root');if(r&&!r.hasChildNodes()){var s=document.getElementById('splash');if(s)s.innerHTML='<div class="d" style="background:linear-gradient(135deg,#5ea8ff,#3d70b8);width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:16px">&#x29C7;</div><h1>The Journal</h1><p style="color:#5a6a94;margin-top:4px">Independent Physics</p><p style="color:#ef4444;margin-top:16px;font-size:13px">App is loading slowly. Try refreshing.</p><a href="/api/stats" style="color:#5ea8ff;margin-top:8px;font-size:12px;display:block">Check API Status</a>';}},15000);
+    setTimeout(function(){var r=document.getElementById('root');if(r&&!r.hasChildNodes()){var s=document.getElementById('splash');if(s)s.innerHTML='<div class="d" style="background:linear-gradient(135deg,#5ea8ff,#3d70b8);width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justifyContent:center;font-size:26px;fontWeight:800;color:#fff;marginBottom:16px">&#x29C7;</div><h1>The Journal</h1><p style="color:#5a6a94;margin-top:4px">Independent Physics</p><p style="color:#ef4444;margin-top:16px;font-size:13px">App is loading slowly. Try refreshing.</p><a href="/api/stats" style="color:#5ea8ff;margin-top:8px;font-size:12px;display:block">Check API Status</a>';}},15000);
   </script>
 </body>
 </html>
