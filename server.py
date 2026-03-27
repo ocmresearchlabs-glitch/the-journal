@@ -387,7 +387,7 @@ def journal_capabilities_payload():
         "tool_contract": {
             "supports_export_future_phase": True,
             "strict_invalid_numeric_handling_planned": True,
-            "silent_sample_fallback_currently_present": False,  # fixed
+            "silent_sample_fallback_currently_present": False,
         },
         "status_groups": {
             "public_feed": list(PUBLIC_FEED_STATUSES),
@@ -452,7 +452,6 @@ def create_notification(user_id, title, body, link=""):
 
 
 def add_editorial_comment(submission_id, admin_user, status):
-    """Add a comment when admin changes status."""
     status_label = Submission.STATUS_LABELS.get(status, status)
     body = f"**Editorial decision:** Paper status changed to **{status_label}**."
     comment = Comment(
@@ -464,7 +463,7 @@ def add_editorial_comment(submission_id, admin_user, status):
     db.session.add(comment)
 
 
-# --- Research tool implementations ---
+# --- Research tool implementations (without silent fallback) ---
 def run_desk_review(title, abstract, body):
     lower = (title + " " + abstract + " " + body).lower()
     wc = len(body.split())
@@ -629,7 +628,6 @@ def parse_series(input_text, file_storage=None, min_points=0):
     if not raw:
         return []
 
-    # CSV/TSV-aware parsing
     lines = [line for line in raw.splitlines() if line.strip()]
     if len(lines) >= 2:
         delimiter = '\t' if '\t' in lines[0] else ',' if ',' in lines[0] else None
@@ -844,7 +842,6 @@ def icm_analysis(series):
 
 
 def clm_analysis(series):
-    # Lightweight structural simulation preserving the spirit of the earlier CLM tool
     k = 7
     n = 64
     diff = 3
@@ -1049,18 +1046,15 @@ def upload_avatar():
     file = request.files["avatar"]
     if file.filename == "":
         return jsonify({"error": "Empty filename"}), 400
-    # Validate extension
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in {".png", ".jpg", ".jpeg", ".gif"}:
         return jsonify({"error": "Only PNG, JPG, JPEG, GIF allowed"}), 400
-    # Generate unique filename
     new_name = f"{uuid.uuid4().hex}{ext}"
     file_path = AVATAR_FOLDER / new_name
     try:
         file.save(str(file_path))
     except Exception as e:
         return jsonify({"error": f"Failed to save: {e}"}), 500
-    # Delete old avatar if exists
     if current_user.avatar_filename:
         old_path = AVATAR_FOLDER / current_user.avatar_filename
         if old_path.exists():
@@ -1079,46 +1073,6 @@ def categories():
             for c in Category.query.all()
         ]
     })
-
-
-@app.route("/api/suggest-category", methods=["POST"])
-def suggest_category():
-    d = request.get_json(silent=True) or {}
-    text = ((d.get("title") or "") + " " + (d.get("abstract") or "") + " " + (d.get("body_text") or "")).lower()
-    clusters = {
-        "foundations": ["spacetime", "curvature", "relativity", "gravity", "metric", "geodesic",
-            "singularity", "horizon", "black hole", "cosmolog", "dark matter", "dark energy",
-            "stress-energy", "einstein", "general relativity", "persistence", "admissible",
-            "negentropic", "restorative", "invariant", "phase-space", "manifold"],
-        "math-physics": ["manifold", "topology", "symmetry", "group", "algebra", "proof",
-            "theorem", "lemma", "corollary", "operator", "eigenvalue", "hilbert",
-            "banach", "tensor", "differential geometry", "variational", "functional",
-            "isomorphism", "homomorphism", "fiber bundle", "lagrangian", "hamiltonian"],
-        "nonlinear": ["chaos", "attractor", "bifurcation", "nonlinear", "dynamical system",
-            "lyapunov", "oscillation", "limit cycle", "strange attractor", "fractal",
-            "forced", "dissipative", "contraction", "divergence", "trajectory",
-            "cellular automata", "rule 110", "turing complete"],
-        "stat-mech": ["entropy", "temperature", "partition", "boltzmann", "distribution",
-            "statistical mechanics", "thermodynamic", "ensemble", "ergodic",
-            "fluctuation", "free energy", "microstate", "macrostate", "canonical"],
-        "complex": ["network", "emergence", "agent", "complex system", "feedback",
-            "self-organization", "scale-free", "power law", "percolation",
-            "information", "mutual information", "transfer entropy", "coupling"],
-        "experimental": ["experiment", "measurement", "observation", "detector", "data",
-            "apparatus", "calibration", "systematic error", "uncertainty",
-            "signal-to-noise", "spectroscopy", "interferometer", "sensor"],
-    }
-    scores = {}
-    for slug, keywords in clusters.items():
-        score = sum(1 for k in keywords if k in text)
-        if score > 0:
-            scores[slug] = score
-    if not scores:
-        return jsonify({"suggested_slug": "foundations", "confidence": 0})
-    best = max(scores, key=scores.get)
-    total = sum(scores.values())
-    confidence = round(scores[best] / max(1, total), 2)
-    return jsonify({"suggested_slug": best, "confidence": confidence, "scores": scores})
 
 
 @app.route("/api/feed/discovery")
@@ -1240,7 +1194,6 @@ def create_submission():
         status="draft" if payload["is_draft"] else "submitted",
     )
     db.session.add(sub)
-    # If not a draft, run desk review and store decision
     desk = None
     if not payload["is_draft"]:
         desk = run_desk_review(sub.title, sub.abstract, sub.body_text)
@@ -1288,7 +1241,6 @@ def submission_detail_edit_delete(bid):
         db.session.commit()
         return jsonify({"ok": True})
 
-    # PUT: update draft
     data = request_data()
     if "title" in data:
         sub.title = (data.get("title") or "").strip() or sub.title
@@ -1527,7 +1479,6 @@ def get_tool_input():
 
 
 def is_plain_text_file(file_storage):
-    """Heuristic to reject binary files like PDFs."""
     if not file_storage:
         return True
     filename = file_storage.filename or ""
@@ -1543,7 +1494,6 @@ def is_plain_text_file(file_storage):
             if any(b not in text_chars for b in sample[:256]):
                 return False
         else:
-            # already string
             pass
     except Exception:
         return False
@@ -1610,7 +1560,6 @@ def admin_submissions():
     elif scope == "public":
         q = q.filter(Submission.status.in_(PUBLIC_FEED_STATUSES))
     else:
-        # default queue
         q = q.filter(Submission.status.in_(ADMIN_QUEUE_STATUSES))
     items = q.order_by(Submission.updated_at.desc()).limit(200).all()
     return jsonify({
@@ -1640,10 +1589,8 @@ def admin_submission_status(sid):
     s.status = status
     if status == "published" and not s.published_at:
         s.published_at = datetime.utcnow()
-    # If changing from draft to something else, ensure is_draft is False
     if status in ("submitted", "in_discovery", "under_review", "published"):
         s.is_draft = False
-    # Add editorial comment
     add_editorial_comment(s.id, current_user, status)
     db.session.commit()
     if s.author_id:
