@@ -1574,9 +1574,14 @@ def admin_submissions():
     q = Submission.query
     if scope == "queue":
         q = q.filter(Submission.status.in_(ADMIN_QUEUE_STATUSES))
-    elif scope == "public":
-        q = q.filter(Submission.status.in_(PUBLIC_FEED_STATUSES))
+    elif scope == "in_review":
+        q = q.filter(Submission.status.in_(["under_review", "in_discovery"]))
+    elif scope == "published":
+        q = q.filter(Submission.status.in_(["published"]))
+    elif scope == "all":
+        q = q.filter(Submission.is_draft.is_(False))  # exclude drafts
     else:
+        # default to queue
         q = q.filter(Submission.status.in_(ADMIN_QUEUE_STATUSES))
     items = q.order_by(Submission.updated_at.desc()).limit(200).all()
     return jsonify({
