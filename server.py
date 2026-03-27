@@ -1271,11 +1271,13 @@ def submission_detail_edit_delete(bid):
             if sub.is_draft:
                 sub.status = "draft"
         if "submit_for_review" in data and parse_bool(data.get("submit_for_review")):
-            if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
-                return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
-            # Ensure body_text is not empty – if empty, copy abstract
+            # --- FIX: Ensure body_text is not empty before validation ---
+            # If the body_text is empty (or only whitespace), copy the abstract.
             if not sub.body_text or not sub.body_text.strip():
                 sub.body_text = sub.abstract
+            # Now validate
+            if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
+                return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
             sub.is_draft = False
             sub.status = "submitted"
             desk = run_desk_review(sub.title or "", sub.abstract or "", sub.body_text or "")
