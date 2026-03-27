@@ -245,6 +245,7 @@ class Submission(db.Model):
             "blind_id": self.blind_id,
             "title": self.title,
             "abstract": self.abstract if full_abstract else (self.abstract or "")[:300],
+            "body_text": self.body_text or "",
             "status": self.status,
             "status_label": self.STATUS_LABELS.get(self.status, self.status),
             "status_color": self.STATUS_COLORS.get(self.status, "#6b7db3"),
@@ -1272,6 +1273,9 @@ def submission_detail_edit_delete(bid):
         if "submit_for_review" in data and parse_bool(data.get("submit_for_review")):
             if not sub.title or not (sub.abstract or "").strip() or not (sub.body_text or "").strip():
                 return jsonify({"error": "Title, abstract, and full paper text are required for review."}), 400
+            # Ensure body_text is not empty – if empty, copy abstract
+            if not sub.body_text or not sub.body_text.strip():
+                sub.body_text = sub.abstract
             sub.is_draft = False
             sub.status = "submitted"
             desk = run_desk_review(sub.title or "", sub.abstract or "", sub.body_text or "")
@@ -1579,9 +1583,8 @@ def admin_submissions():
     elif scope == "published":
         q = q.filter(Submission.status.in_(["published"]))
     elif scope == "all":
-        q = q.filter(Submission.is_draft.is_(False))  # exclude drafts
+        q = q.filter(Submission.is_draft.is_(False))
     else:
-        # default to queue
         q = q.filter(Submission.status.in_(ADMIN_QUEUE_STATUSES))
     items = q.order_by(Submission.updated_at.desc()).limit(200).all()
     return jsonify({
