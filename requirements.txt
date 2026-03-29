@@ -1,0 +1,7 @@
+Flask
+Flask-Login
+Flask-SQLAlchemy
+SQLAlchemy
+gunicorn
+psycopg2-binary
+anthropic
